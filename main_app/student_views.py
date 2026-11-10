@@ -15,7 +15,14 @@ from .models import *
 
 
 def student_home(request):
-    student = get_object_or_404(Student, admin=request.user)
+    student = Student.objects.filter(admin=request.user).first()
+    if not student:
+        messages.error(request, "Access denied. Please log in with a student account.")
+        if getattr(request.user, 'user_type', None) == '1':
+            return redirect('admin_home')
+        elif getattr(request.user, 'user_type', None) == '2':
+            return redirect('staff_home')
+        return redirect('login_page')
     total_subject = Subject.objects.filter(course=student.course).count()
     total_attendance = AttendanceReport.objects.filter(student=student).count()
     total_present = AttendanceReport.objects.filter(student=student, status=True).count()

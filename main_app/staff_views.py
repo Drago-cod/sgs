@@ -30,7 +30,14 @@ from twilio.rest import Client
 logger = logging.getLogger(__name__)
 
 def staff_home(request):
-    staff = get_object_or_404(Staff, admin=request.user)
+    staff = Staff.objects.filter(admin=request.user).first()
+    if not staff:
+        messages.error(request, "Access denied. Please log in with a teacher/staff account.")
+        if getattr(request.user, 'user_type', None) == '1':
+            return redirect('admin_home')
+        elif getattr(request.user, 'user_type', None) == '3':
+            return redirect('student_home')
+        return redirect('login_page')
     total_students = Student.objects.filter(course=staff.course).count()
     total_leave = LeaveReportStaff.objects.filter(staff=staff).count()
     subjects = Subject.objects.filter(staff=staff)
@@ -470,7 +477,10 @@ def send_result_sms(request, student_id):
 
 #Another newest view that has been added
 def class_teacher_dashboard(request):
-    staff = get_object_or_404(Staff, admin=request.user)
+    staff = Staff.objects.filter(admin=request.user).first()
+    if not staff:
+        messages.error(request, "Access denied. Please log in with a teacher account.")
+        return redirect('admin_home' if getattr(request.user, 'user_type', None) == '1' else 'login_page')
     if not staff.class_teacher:
         messages.error(request, "You are not authorized to access this page")
         return redirect('staff_home')
