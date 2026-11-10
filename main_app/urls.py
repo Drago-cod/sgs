@@ -14,6 +14,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.urls import path
+from django.views.generic.base import RedirectView
 
 from main_app.EditResultView import EditResultView
 
@@ -23,6 +24,9 @@ from .staff_views import class_teacher_dashboard, view_class_students, send_clas
 
 urlpatterns = [
     path("", views.login_page, name='login_page'),
+    path("index.html", RedirectView.as_view(url='/', permanent=False)),
+    path("index2.html", RedirectView.as_view(url='/', permanent=False)),
+    path("index3.html", RedirectView.as_view(url='/', permanent=False)),
     path("get_attendance", views.get_attendance, name='get_attendance'),
     path("firebase-messaging-sw.js", views.showFirebaseJS, name='showFirebaseJS'),
     path("doLogin/", views.doLogin, name='user_login'),
