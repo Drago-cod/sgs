@@ -1,37 +1,68 @@
 {% extends 'main_app/base.html' %}
-<!-- Just a space -->
-{% block content %}
-<div class="container">
-  <h2>{{ page_title }}</h2>
-  <div class="table-responsive">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Student Name</th>
-          <th>Parent Phone</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for student in students %}
-        <tr>
-          <td>{{ student.admin.get_full_name }}</td>
-          <td>{{ student.phone_number }}</td>
-          <td>
-            <button
-              class="btn btn-success btn-sm send-sms"
-              data-student-id="{{ student.id }}"
-            >
-              Send Results
-            </button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
 
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row mb-3">
+            <div class="col-12">
+                <a href="{% url 'class_teacher_dashboard' %}" class="btn btn-secondary mr-2">
+                    <i class="fas fa-arrow-left mr-1"></i> Class Teacher Dashboard
+                </a>
+                <a href="{% url 'send_class_results_sms' %}" class="btn btn-danger" onclick="return confirm('Send results via SMS to all parents of this class?');">
+                    <i class="fas fa-paper-plane mr-1"></i> Send Results to All Class Parents
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card card-primary card-outline">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-users mr-1"></i> {{ page_title }}</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover table-striped">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student Name</th>
+                                    <th>Parent Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for student in students %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ student.admin.last_name }}, {{ student.admin.first_name }}</td>
+                                    <td>{{ student.phone_number|default:"N/A" }}</td>
+                                    <td>
+                                        <button class="btn btn-success btn-sm send-sms" data-student-id="{{ student.id }}">
+                                            <i class="fas fa-sms mr-1"></i> Send SMS
+                                        </button>
+                                        <a href="{% url 'view_student_result' student.id %}" class="btn btn-info btn-sm ml-1">
+                                            <i class="fas fa-eye mr-1"></i> View Results
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">No students found.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
 <script>
   document.querySelectorAll(".send-sms").forEach((button) => {
     button.addEventListener("click", function () {
@@ -46,9 +77,12 @@
           .then((response) => response.json())
           .then((data) => {
             alert(data.message);
+          })
+          .catch((err) => {
+            alert("Error sending request: " + err);
           });
       }
     });
   });
 </script>
-{% endblock %}
+{% endblock custom_js %}
