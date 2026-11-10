@@ -202,6 +202,23 @@ def save_user_profile(sender, instance, **kwargs):
         instance.student.save()
 
 
+# Messaging system between students and class teachers
+class StudentMessage(models.Model):
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_messages')
+    subject = models.CharField(max_length=200, default='No Subject')
+    message = models.TextField()
+    is_read = models.BooleanField(default=False)
+    parent_message = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"From {self.sender.get_full_name()} to {self.receiver.get_full_name()} - {self.subject}"
+
+
 # Last additional model.
 class SMSLog(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)

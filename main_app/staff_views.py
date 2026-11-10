@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import *
 from .models import *
+from django.db.models import Q
 
 #My additional imports
 #import vonage
@@ -719,3 +720,103 @@ def download_student_result(request, student_id):
     return response
 
 
+
+def class_teacher_messages(request):
+    """Class teacher can view and reply to student messages."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    if not staff.class_teacher:
+        messages.error(request, "You are not authorized to access this page")
+        return redirect('staff_home')
+
+    if request.method == 'POST':
+        message_text = request.POST.get('message', '')
+        student_user_id = request.POST.get('student_user_id')
+        parent_id = request.POST.get('parent_message', None)
+
+        if not message_text.strip():
+            messages.error(request, "Reply cannot be empty")
+            return redirect(reverse('class_teacher_messages'))
+
+        try:
+            student_user = CustomUser.objects.get(id=student_user_id)
+        except CustomUser.DoesNotExist:
+            messages.error(request, "Student not found")
+            return redirect(reverse('class_teacher_messages'))
+
+        parent_msg = None
+        if parent_id:
+            try:
+                parent_msg = StudentMessage.objects.get(id=parent_id)
+            except StudentMessage.DoesNotExist:
+                pass
+
+        # Determine subject from parent message or use default
+        subject = parent_msg.subject if parent_msg else 'Reply from Class Teacher'
+
+        StudentMessage.objects.create(
+            sender=request.user,
+            receiver=student_user,
+            subject=subject,
+            message=message_text,
+            parent_message=parent_msg
+        )
+        messages.success(request, f"Reply sent to {student_user.get_full_name()}")
+        return redirect(reverse('class_teacher_messages'))
+
+    # Get all students in this class
+    students_in_class = Student.objects.filter(course=staff.course)
+    student_users = CustomUser.objects.filter(
+        id__in=students_in_class.values_list('admin_id', flat=True)
+    )
+
+    # Get all messages for this class teacher (received + sent)
+    all_messages = StudentMessage.objects.filter(
+        Q(receiver=request.user) | Q(sender=request.user)
+    ).order_by('-created_at')
+
+    # Mark received messages as read
+    all_messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+
+    # Group messages by student (conversation threads)
+    conversations = {}
+    for msg in all_messages:
+        # Determine the other party (the student)
+        other_user = msg.sender if msg.sender != request.user else msg.receiver
+        if other_user.id not in conversations:
+            conversations[other_user.id] = {
+                'student': other_user,
+                'messages': [],
+                'unread_count': 0,
+                'latest_message': msg
+            }
+        conversations[other_user.id]['messages'].append(msg)
+        if msg.receiver == request.user and not msg.is_read:
+            conversations[other_user.id]['unread_count'] += 1
+
+    # Count total unread
+    unread_count = StudentMessage.objects.filter(receiver=request.user, is_read=False).count()
+
+    # Get selected conversation if any
+    selected_student_id = request.GET.get('student_id')
+    selected_conversation = None
+    selected_student = None
+    if selected_student_id:
+        try:
+            selected_student = CustomUser.objects.get(id=selected_student_id)
+            selected_conversation = StudentMessage.objects.filter(
+                Q(sender=request.user, receiver=selected_student) |
+                Q(receiver=request.user, sender=selected_student)
+            ).order_by('created_at')
+            # Mark these as read
+            selected_conversation.filter(receiver=request.user, is_read=False).update(is_read=True)
+        except CustomUser.DoesNotExist:
+            pass
+
+    context = {
+        'conversations': conversations,
+        'selected_conversation': selected_conversation,
+        'selected_student': selected_student,
+        'unread_count': unread_count,
+        'page_title': 'Class Messages'
+    }
+    return render(request, "staff_template/class_teacher_messages.html", context)

@@ -1,133 +1,396 @@
 {% extends 'main_app/base.html' %}
 {% load static %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    /* Dashboard Welcome Banner */
+    .dashboard-welcome {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #17a2b8 100%);
+        border-radius: 12px;
+        padding: 30px 30px;
+        color: #fff;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 15px rgba(30,58,95,0.3);
+        position: relative;
+        overflow: hidden;
+    }
+    .dashboard-welcome::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 300px;
+        height: 300px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
+    }
+    .dashboard-welcome::after {
+        content: '';
+        position: absolute;
+        bottom: -60%;
+        left: 10%;
+        width: 200px;
+        height: 200px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 50%;
+    }
+    .dashboard-welcome h2 {
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+        position: relative;
+        z-index: 2;
+    }
+    .dashboard-welcome p {
+        opacity: 0.85;
+        font-size: 0.95rem;
+        margin: 0;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* Gradient Stat Boxes */
+    .stat-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        position: relative;
+        min-height: 140px;
+        color: #fff;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    }
+    .stat-card .stat-body {
+        padding: 20px 25px;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-card .stat-body h3 {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+    .stat-card .stat-body h3 sup {
+        font-size: 1.1rem;
+        font-weight: 600;
+    }
+    .stat-card .stat-body p {
+        font-size: 0.95rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+        font-weight: 500;
+    }
+    .stat-card .stat-icon {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 3.5rem;
+        opacity: 0.2;
+        z-index: 1;
+    }
+    .stat-card .stat-footer {
+        display: block;
+        padding: 8px 25px;
+        background: rgba(0,0,0,0.15);
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .stat-card .stat-footer:hover {
+        background: rgba(0,0,0,0.25);
+        color: #fff;
+        text-decoration: none;
+    }
+    .stat-card .stat-footer i {
+        transition: transform 0.3s ease;
+    }
+    .stat-card .stat-footer:hover i {
+        transform: translateX(3px);
+    }
+
+    /* Gradient backgrounds */
+    .bg-grad-navy { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); }
+    .bg-grad-teal { background: linear-gradient(135deg, #17a2b8 0%, #28a745 100%); }
+    .bg-grad-red { background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%); }
+    .bg-grad-amber { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); }
+
+    /* Quick Actions */
+    .quick-actions-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: none;
+        background: #fff;
+    }
+    .quick-actions-card .card-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #17a2b8 100%);
+        color: #fff;
+        padding: 12px 20px;
+        border-bottom: none;
+    }
+    .quick-actions-card .card-header h3 {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+    .quick-action-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 22px 15px;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        background: #f8f9fa;
+        border: 2px solid transparent;
+        min-height: 120px;
+    }
+    .quick-action-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.12);
+        text-decoration: none;
+    }
+    .quick-action-btn .qa-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        margin-bottom: 10px;
+        color: #fff;
+        transition: transform 0.3s ease;
+    }
+    .quick-action-btn:hover .qa-icon {
+        transform: scale(1.1);
+    }
+    .quick-action-btn span {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-align: center;
+    }
+    .qa-navy { background: linear-gradient(135deg, #1e3a5f, #2c5282); }
+    .qa-teal { background: linear-gradient(135deg, #17a2b8, #28a745); }
+    .qa-amber { background: linear-gradient(135deg, #ffc107, #fd7e14); }
+    .qa-green { background: linear-gradient(135deg, #28a745, #20c997); }
+    .quick-action-btn.qa-btn-navy { color: #1e3a5f; }
+    .quick-action-btn.qa-btn-navy:hover { background: rgba(30,58,95,0.05); border-color: #1e3a5f; }
+    .quick-action-btn.qa-btn-teal { color: #17a2b8; }
+    .quick-action-btn.qa-btn-teal:hover { background: rgba(23,162,184,0.05); border-color: #17a2b8; }
+    .quick-action-btn.qa-btn-amber { color: #e67e00; }
+    .quick-action-btn.qa-btn-amber:hover { background: rgba(255,193,7,0.08); border-color: #ffc107; }
+    .quick-action-btn.qa-btn-green { color: #28a745; }
+    .quick-action-btn.qa-btn-green:hover { background: rgba(40,167,69,0.05); border-color: #28a745; }
+
+    /* Chart Cards */
+    .chart-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: none;
+        transition: all 0.3s ease;
+    }
+    .chart-card:hover {
+        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    }
+    .chart-card .card-header {
+        border-bottom: none;
+        padding: 15px 20px;
+    }
+    .chart-card .card-header.grad-header-navy {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+        color: #fff;
+    }
+    .chart-card .card-header.grad-header-teal {
+        background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+        color: #fff;
+    }
+    .chart-card .card-header .card-title {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .chart-card .card-header .btn-tool {
+        color: rgba(255,255,255,0.8);
+    }
+    .chart-card .card-header .btn-tool:hover {
+        color: #fff;
+    }
+    .chart-card .card-body {
+        padding: 20px;
+    }
+</style>
+{% endblock custom_css %}
+
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <!-- Small boxes (Stat box) -->
-        <div class="row">
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-info">
-                    <div class="inner">
+        <!-- Dashboard Welcome Banner -->
+        <div class="dashboard-welcome">
+            <h2><i class="fas fa-graduation-cap mr-2"></i> Welcome, {{ request.user.first_name }} {{ request.user.last_name }}!</h2>
+            <p>Here's your academic overview at a glance. Stay on top of your performance!</p>
+        </div>
+
+        <!-- Stat Boxes Row -->
+        <div class="row mb-4">
+            <!-- Total Attendance -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                <div class="stat-card bg-grad-navy">
+                    <div class="stat-body">
                         <h3>{{total_attendance}}</h3>
-                        <p>Total Attendance Taken</p>
+                        <p>Total Attendance</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <a href="{% url 'student_view_attendance' %}" class="small-box-footer">View Attendance <i class="fas fa-arrow-circle-right"></i></a>
+                    <i class="fas fa-calendar-check stat-icon"></i>
+                    <a href="{% url 'student_view_attendance' %}" class="stat-footer">
+                        View Attendance <i class="fas fa-arrow-circle-right ml-1"></i>
+                    </a>
                 </div>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-success">
-                    <div class="inner">
-                        <h3>{{ percent_present }}<sup style="font-size: 20px">%</sup></h3>
+
+            <!-- Attendance Rate -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                <div class="stat-card bg-grad-teal">
+                    <div class="stat-body">
+                        <h3>{{ percent_present }}<sup>%</sup></h3>
                         <p>Attendance Rate</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-user-check"></i>
-                    </div>
-                    <a href="{% url 'student_view_attendance' %}" class="small-box-footer">Check Details <i class="fas fa-arrow-circle-right"></i></a>
+                    <i class="fas fa-user-check stat-icon"></i>
+                    <a href="{% url 'student_view_attendance' %}" class="stat-footer">
+                        Check Details <i class="fas fa-arrow-circle-right ml-1"></i>
+                    </a>
                 </div>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-danger">
-                    <div class="inner">
-                        <h3>{{percent_absent}}<sup style="font-size: 20px">%</sup></h3>
+
+            <!-- Absence Rate -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                <div class="stat-card bg-grad-red">
+                    <div class="stat-body">
+                        <h3>{{percent_absent}}<sup>%</sup></h3>
                         <p>Absence Rate</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-user-times"></i>
-                    </div>
-                    <a href="{% url 'student_apply_leave' %}" class="small-box-footer">Apply Leave <i class="fas fa-arrow-circle-right"></i></a>
+                    <i class="fas fa-user-times stat-icon"></i>
+                    <a href="{% url 'student_apply_leave' %}" class="stat-footer">
+                        Apply Leave <i class="fas fa-arrow-circle-right ml-1"></i>
+                    </a>
                 </div>
             </div>
-            <!-- ./col -->
-            <div class="col-lg-3 col-6">
-                <!-- small box -->
-                <div class="small-box bg-warning">
-                    <div class="inner">
+
+            <!-- Total Subjects -->
+            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
+                <div class="stat-card bg-grad-amber">
+                    <div class="stat-body">
                         <h3>{{total_subject}}</h3>
                         <p>Total Subjects</p>
                     </div>
-                    <div class="icon">
-                        <i class="fas fa-book"></i>
-                    </div>
-                    <a href="{% url 'student_view_result' %}" class="small-box-footer">View Results <i class="fas fa-arrow-circle-right"></i></a>
+                    <i class="fas fa-book stat-icon"></i>
+                    <a href="{% url 'student_view_result' %}" class="stat-footer">
+                        View Results <i class="fas fa-arrow-circle-right ml-1"></i>
+                    </a>
                 </div>
             </div>
-            <!-- ./col -->
         </div>
+        <!-- /.row -->
 
         <!-- Quick Actions -->
-        <div class="row mb-3">
+        <div class="row mb-4">
             <div class="col-12">
-                <div class="card card-outline card-secondary mb-0">
-                    <div class="card-body p-2 d-flex flex-wrap align-items-center">
-                        <span class="font-weight-bold mr-3 ml-2"><i class="fas fa-bolt text-warning mr-1"></i> Student Shortcuts:</span>
-                        <a href="{% url 'student_view_result' %}" class="btn btn-outline-primary btn-sm mr-2 mb-1"><i class="fas fa-poll-h mr-1"></i> View Exam Results</a>
-                        <a href="{% url 'student_view_attendance' %}" class="btn btn-outline-info btn-sm mr-2 mb-1"><i class="fas fa-calendar-alt mr-1"></i> View Attendance</a>
-                        <a href="{% url 'student_apply_leave' %}" class="btn btn-outline-warning btn-sm mr-2 mb-1"><i class="fas fa-plane-departure mr-1"></i> Request Leave</a>
-                        <a href="{% url 'student_feedback' %}" class="btn btn-outline-success btn-sm mr-2 mb-1"><i class="fas fa-comment-dots mr-1"></i> Send Feedback</a>
-                        <a href="{% url 'student_view_profile' %}" class="btn btn-outline-secondary btn-sm mb-1"><i class="fas fa-user-edit mr-1"></i> My Profile</a>
+                <div class="card quick-actions-card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-bolt mr-2"></i> Student Shortcuts</h3>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-lg-6">
-                <!-- DONUT CHART -->
-                <div class="card card-secondary">
-                  <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-pie mr-1"></i> Attendance Overview (Present vs Absent)</h3>
-    
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <canvas id="attendanceData" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                  </div>
-                  <!-- /.card-body -->
-                </div>
-                <!-- /.card -->
-            </div>
-                  
-            <div class="col-lg-6">
-                <div class="card card-secondary">
-                  <div class="card-header">
-                    <h3 class="card-title"><i class="fas fa-chart-bar mr-1"></i> Attendance by Subject</h3>
-    
-                    <div class="card-tools">
-                      <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i>
-                      </button>
-                      <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
-                    </div>
-                  </div>
-                  <div class="card-body">
-                    <div class="chart">
-                      <canvas id="attendanceStatistics" style="min-height: 250px; height: 250px; max-height: 250px; max-width: 100%;"></canvas>
-                    </div> 
-                  </div>
-                  <!-- /.card-body -->
-                </div>
-            </div>
-        </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_view_result' %}" class="quick-action-btn qa-btn-navy">
+                                    <div class="qa-icon qa-navy">
+                                        <i class="fas fa-poll-h"></i>
+                                    </div>
+                                    <span>View Results</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_view_attendance' %}" class="quick-action-btn qa-btn-teal">
+                                    <div class="qa-icon qa-teal">
+                                        <i class="fas fa-calendar-alt"></i>
+                                    </div>
+                                    <span>View Attendance</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_apply_leave' %}" class="quick-action-btn qa-btn-amber">
+                                    <div class="qa-icon qa-amber">
+                                        <i class="fas fa-plane-departure"></i>
+                                    </div>
+                                    <span>Request Leave</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_feedback' %}" class="quick-action-btn qa-btn-green">
+                                    <div class="qa-icon qa-green">
+                                        <i class="fas fa-comment-dots"></i>
+                                    </div>
+                                    <span>Send Feedback</span>
+                                </a>
+                            </div>
                         </div>
-                        </div>  
-                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /.row -->
+
+        <!-- Charts Row -->
+        <div class="row mb-4">
+            <!-- Donut Chart -->
+            <div class="col-lg-6 mb-3">
+                <div class="card chart-card">
+                    <div class="card-header grad-header-navy">
+                        <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i> Attendance Overview (Present vs Absent)</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+                            <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="attendanceData" style="min-height: 280px; height: 280px; max-height: 280px; max-width: 100%;"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bar Chart -->
+            <div class="col-lg-6 mb-3">
+                <div class="card chart-card">
+                    <div class="card-header grad-header-teal">
+                        <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i> Attendance by Subject</h3>
+                        <div class="card-tools">
+                            <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
+                            <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart">
+                            <canvas id="attendanceStatistics" style="min-height: 280px; height: 280px; max-height: 280px; max-width: 100%;"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- /.row -->
+
+    </div><!-- /.container-fluid -->
+</section>
 {% endblock content %}
 
 {% block custom_js %}
-  <script>
+<script>
 $(document).ready(function(){
 
     //Dataset
@@ -145,13 +408,23 @@ $(document).ready(function(){
       datasets: [
         {
           data: [{{percent_present}}, {{percent_absent}}],
-          backgroundColor : ['#00a65a','#f56954'],
+          backgroundColor : ['#17a2b8','#dc3545'],
+          borderWidth: 2,
+          borderColor: '#fff',
         }
       ]
     }
     var donutOptions     = {
       maintainAspectRatio : false,
       responsive : true,
+      legend: {
+        position: 'bottom',
+        labels: {
+          padding: 20,
+          fontFamily: "'Inter', 'Source Sans Pro', sans-serif",
+          fontSize: 13
+        }
+      }
     }
     var attendanceData = new Chart(attendanceDataCanvas, {
       type: 'doughnut',
@@ -166,26 +439,30 @@ var areaChartData = {
     datasets: [
     {
         label               : 'Present In Class',
-        backgroundColor     : 'rgba(60,141,188,0.9)',
-        borderColor         : 'rgba(60,141,188,0.8)',
+        backgroundColor     : 'rgba(23,162,184,0.85)',
+        borderColor         : 'rgba(23,162,184,0.8)',
         pointRadius          : false,
         pointColor          : '#3b8bba',
         pointStrokeColor    : 'rgba(60,141,188,1)',
         pointHighlightFill  : '#fff',
         pointHighlightStroke: 'rgba(60,141,188,1)',
-        data                : data_present
+        data                : data_present,
+        borderRadius        : 4,
+        borderWidth         : 0,
       },
 
       {
         label               : 'Absent In Class',
-        backgroundColor     : 'rgba(210, 214, 222, 1)',
-        borderColor         : 'rgba(210, 214, 222, 1)',
+        backgroundColor     : 'rgba(220, 53, 69, 0.6)',
+        borderColor         : 'rgba(220, 53, 69, 0.6)',
         pointRadius         : false,
         pointColor          : 'rgba(210, 214, 222, 1)',
         pointStrokeColor    : '#c1c7d1',
         pointHighlightFill  : '#fff',
         pointHighlightStroke: 'rgba(220,220,220,1)',
-        data                : data_absent
+        data                : data_absent,
+        borderRadius        : 4,
+        borderWidth         : 0,
       },
     ]
   }
@@ -196,7 +473,24 @@ barChartData.datasets[0] = temp
 var barChartOptions = {
   responsive              : true,
   maintainAspectRatio     : false,
-  datasetFill             : false
+  datasetFill             : false,
+  legend: {
+    position: 'bottom',
+    labels: {
+      padding: 15,
+      fontFamily: "'Inter', 'Source Sans Pro', sans-serif",
+      fontSize: 12
+    }
+  },
+  scales: {
+    xAxes: [{
+      gridLines: { display: false }
+    }],
+    yAxes: [{
+      gridLines: { borderDash: [3,3], color: 'rgba(0,0,0,0.05)' },
+      ticks: { beginAtZero: true }
+    }]
+  }
 }
 
 var barChart = new Chart(barChartCanvas, {
@@ -208,91 +502,91 @@ var barChart = new Chart(barChartCanvas, {
  
 })
 
-  </script>
-        <!-- The core Firebase JS SDK is always required and must be listed first -->
-        <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
+</script>
+    <!-- The core Firebase JS SDK is always required and must be listed first -->
+    <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-app.js"></script>
 
-        <!-- TODO: Add SDKs for Firebase products that you want to use
-         https://firebase.google.com/docs/web/setup#available-libraries -->
-        <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
-    
-    
-        <script>
-            // Your web app's Firebase configuration
-            // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-            var firebaseConfig = {
-                apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
-                authDomain: "sms-with-django.firebaseapp.com",
-                databaseURL: "https://sms-with-django.firebaseio.com",
-                projectId: "sms-with-django",
-                storageBucket: "sms-with-django.appspot.com",
-                messagingSenderId: "945324593139",
-                appId: "1:945324593139:web:03fa99a8854bbd38420c86",
-                measurementId: "G-2F2RXTL9GT"
-            };
-            // Initialize Firebase
-            firebase.initializeApp(firebaseConfig)
-            const messaging = firebase.messaging();
-            function InitializeFireBaseMessaging() {
-                messaging
-                    .requestPermission()
-                    .then(function () {
-                        console.log("Notification Permission");
-                        return messaging.getToken();
-                    })
-                    .then(function (token) {
-                        console.log("Token : " + token);
-                        sendToServer(token);
-                    })
-                    .catch(function (reason) {
-                        console.log(reason)
-                    })
+    <!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+    <script src="https://www.gstatic.com/firebasejs/7.23.0/firebase-analytics.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.22.1/firebase-messaging.js"></script>
+
+
+    <script>
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        var firebaseConfig = {
+            apiKey: "AIzaSyBarDWWHTfTMSrtc5Lj3Cdw5dEvjAkFwtM",
+            authDomain: "sms-with-django.firebaseapp.com",
+            databaseURL: "https://sms-with-django.firebaseio.com",
+            projectId: "sms-with-django",
+            storageBucket: "sms-with-django.appspot.com",
+            messagingSenderId: "945324593139",
+            appId: "1:945324593139:web:03fa99a8854bbd38420c86",
+            measurementId: "G-2F2RXTL9GT"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig)
+        const messaging = firebase.messaging();
+        function InitializeFireBaseMessaging() {
+            messaging
+                .requestPermission()
+                .then(function () {
+                    console.log("Notification Permission");
+                    return messaging.getToken();
+                })
+                .then(function (token) {
+                    console.log("Token : " + token);
+                    sendToServer(token);
+                })
+                .catch(function (reason) {
+                    console.log(reason)
+                })
+        }
+        messaging.onMessage(function (payload) {
+            const notificationOption = {
+                body: payload.notification.body,
+                icon: payload.notification.icon,
+
             }
-            messaging.onMessage(function (payload) {
-                const notificationOption = {
-                    body: payload.notification.body,
-                    icon: payload.notification.icon,
-    
+            if (Notification.permission == 'granted') {
+                var notification = new Notification(payload.notification.title, notificationOption);
+                notification.onclick = function (event) {
+                    event.preventDefault();
+                    window.open(payload.notification.click_action, "_blank");
+                    notification.close();
                 }
-                if (Notification.permission == 'granted') {
-                    var notification = new Notification(payload.notification.title, notificationOption);
-                    notification.onclick = function (event) {
-                        event.preventDefault();
-                        window.open(payload.notification.click_action, "_blank");
-                        notification.close();
-                    }
-                }
-                console.log(payload);
-            });
-            messaging.onTokenRefresh(function () {
-                messaging.getToken()
-                    .then(function (newToken) {
-                        console.log("New Token : " + newToken);
-                        sendToServer(newToken);
-  
-                    })
-                    .catch(function (reason) {
-                        console.log(reason)
-                    })
-            })
-    
-            function sendToServer(token){
-              $.ajax({
-                url: "{% url 'student_fcmtoken' %}",
-                type: 'POST',
-                data: {
-                    token: token,
-                }
-            }).done(function (response) {
-               
-      
-               
-            }).fail(function (response) {
-            })
-  
             }
-            
-            InitializeFireBaseMessaging();
-        </script>
+            console.log(payload);
+        });
+        messaging.onTokenRefresh(function () {
+            messaging.getToken()
+                .then(function (newToken) {
+                    console.log("New Token : " + newToken);
+                    sendToServer(newToken);
+
+                })
+                .catch(function (reason) {
+                    console.log(reason)
+                })
+        })
+
+        function sendToServer(token){
+          $.ajax({
+            url: "{% url 'student_fcmtoken' %}",
+            type: 'POST',
+            data: {
+                token: token,
+            }
+        }).done(function (response) {
+           
+  
+           
+        }).fail(function (response) {
+        })
+
+        }
+        
+        InitializeFireBaseMessaging();
+    </script>
 {% endblock custom_js %}

@@ -20,7 +20,7 @@ from main_app.EditResultView import EditResultView
 
 from . import hod_views, staff_views, student_views, views
 from .hod_views import manage_class_teachers
-from .staff_views import class_teacher_dashboard, view_class_students, send_class_results_sms, view_individual_results, view_student_result, send_result_sms, download_student_result
+from .staff_views import class_teacher_dashboard, view_class_students, send_class_results_sms, view_individual_results, view_student_result, send_result_sms, download_student_result, class_teacher_messages
 
 urlpatterns = [
     path("", views.login_page, name='login_page'),
@@ -136,6 +136,8 @@ urlpatterns = [
          name="student_view_notification"),
     path('student/view/result/', student_views.student_view_result,
          name='student_view_result'),
+    path('student/messages/', student_views.student_messages,
+         name='student_messages'),
          #New urls
     path('manage_class_teachers', manage_class_teachers, name='manage_class_teachers'),
     path('class_teacher_dashboard', class_teacher_dashboard, name='class_teacher_dashboard'),
@@ -145,4 +147,5 @@ urlpatterns = [
     path('view_student_result/<int:student_id>', view_student_result, name='view_student_result'),
     path('send_result_sms/<int:student_id>/', send_result_sms, name='send_result_sms'),
     path('download_student_result/<int:student_id>/', download_student_result, name='download_student_result'),
+    path('class_teacher_messages/', class_teacher_messages, name='class_teacher_messages'),
 ]

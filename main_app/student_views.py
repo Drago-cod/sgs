@@ -10,6 +10,7 @@ from django.shortcuts import (HttpResponseRedirect, get_object_or_404,
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 
+from django.db import models as db_models
 from .forms import *
 from .models import *
 
@@ -212,3 +213,59 @@ def student_view_result(request):
         'page_title': "View Results"
     }
     return render(request, "student_template/student_view_result.html", context)
+
+
+def student_messages(request):
+    student = get_object_or_404(Student, admin=request.user)
+    # Find the class teacher for this student's course
+    class_teacher = Staff.objects.filter(course=student.course, class_teacher=True).first()
+
+    if request.method == 'POST':
+        subject = request.POST.get('subject', 'No Subject')
+        message_text = request.POST.get('message', '')
+        parent_id = request.POST.get('parent_message', None)
+
+        if not message_text.strip():
+            messages.error(request, "Message cannot be empty")
+            return redirect(reverse('student_messages'))
+
+        if not class_teacher:
+            messages.error(request, "No class teacher assigned to your class yet.")
+            return redirect(reverse('student_messages'))
+
+        parent_msg = None
+        if parent_id:
+            try:
+                parent_msg = StudentMessage.objects.get(id=parent_id)
+            except StudentMessage.DoesNotExist:
+                pass
+
+        StudentMessage.objects.create(
+            sender=request.user,
+            receiver=class_teacher.admin,
+            subject=subject,
+            message=message_text,
+            parent_message=parent_msg
+        )
+        messages.success(request, "Message sent to your class teacher successfully!")
+        return redirect(reverse('student_messages'))
+
+    # Get all messages in this conversation (sent and received)
+    all_messages = StudentMessage.objects.filter(
+        db_models.Q(sender=request.user, receiver=class_teacher.admin if class_teacher else None) |
+        db_models.Q(receiver=request.user, sender=class_teacher.admin if class_teacher else None)
+    ).order_by('created_at') if class_teacher else StudentMessage.objects.none()
+
+    # Mark received messages as read
+    all_messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+
+    # Count unread
+    unread_count = StudentMessage.objects.filter(receiver=request.user, is_read=False).count()
+
+    context = {
+        'all_messages': all_messages,
+        'class_teacher': class_teacher,
+        'unread_count': unread_count,
+        'page_title': 'Messages'
+    }
+    return render(request, "student_template/student_messages.html", context)
