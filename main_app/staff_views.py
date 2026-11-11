@@ -130,7 +130,7 @@ def save_attendance(request):
                     status = 'PRESENT'
                 elif status in ('0', 'FALSE'):
                     status = 'ABSENT'
-                if status not in ('PRESENT', 'TARDY', 'ABSENT', 'PENDING'):
+                if status not in ('PRESENT', 'TARDY', 'ABSENT', 'EXCUSED', 'DISMISSED', 'PENDING'):
                     return HttpResponseBadRequest("Invalid attendance status")
                 attendance_report.attendance_status = status
                 attendance_report.status = status in ('PRESENT', 'TARDY')
@@ -192,7 +192,7 @@ def update_attendance(request):
                 status = 'PRESENT'
             elif status in ('0', 'FALSE'):
                 status = 'ABSENT'
-            if status not in ('PRESENT', 'TARDY', 'ABSENT', 'PENDING'):
+            if status not in ('PRESENT', 'TARDY', 'ABSENT', 'EXCUSED', 'DISMISSED', 'PENDING'):
                 return HttpResponseBadRequest("Invalid attendance status")
             attendance_report.attendance_status = status
             attendance_report.status = status in ('PRESENT', 'TARDY')

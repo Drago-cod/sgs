@@ -1,0 +1,114 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="alert alert-info">
+            Alerts identify attendance records for authorized human review. They are not proof of misconduct and must not trigger automatic disciplinary action.
+        </div>
+        <div class="card card-primary">
+            <div class="card-header">
+                <h3 class="card-title">Scan daily attendance</h3>
+            </div>
+            <div class="card-body">
+                <form id="attendance-audit-form">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="audit-date">Attendance date</label>
+                        <input id="audit-date" name="date" type="date" class="form-control" required>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Run audit</button>
+                </form>
+                <div id="audit-result" class="mt-3" role="status"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Attendance review log</h3>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered table-striped">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Student</th>
+                            <th>Period</th>
+                            <th>Finding</th>
+                            <th>Confidence</th>
+                            <th>Review</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for anomaly in anomalies %}
+                        <tr>
+                            <td>{{ anomaly.date }}</td>
+                            <td>{{ anomaly.student.admin.get_full_name }} (ID {{ anomaly.student.admin_id }})</td>
+                            <td>{{ anomaly.flagged_period|default:"—" }}</td>
+                            <td>
+                                <strong>{{ anomaly.flag_type }}</strong><br>
+                                {{ anomaly.summary }}
+                            </td>
+                            <td>{{ anomaly.confidence_score|floatformat:2 }}</td>
+                            <td>
+                                {% if anomaly.review_status == "PENDING" %}
+                                <form method="post" action="{% url 'review_attendance_anomaly' anomaly.id %}">
+                                    {% csrf_token %}
+                                    <div class="form-group">
+                                        <select name="outcome" class="form-control" required>
+                                            <option value="">Select outcome</option>
+                                            <option value="NO_ACTION">No action required</option>
+                                            <option value="RECORDS_CORRECTED">Attendance records corrected</option>
+                                            <option value="CONFIRMED">Discrepancy confirmed</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <textarea name="notes" class="form-control" rows="2" placeholder="Review notes"></textarea>
+                                    </div>
+                                    <button class="btn btn-sm btn-success" type="submit">Complete review</button>
+                                </form>
+                                {% else %}
+                                {{ anomaly.get_review_outcome_display }} by {{ anomaly.reviewed_by.get_full_name|default:"Administrator" }}
+                                {% if anomaly.review_notes %}<br>{{ anomaly.review_notes }}{% endif %}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center">No attendance anomalies have been recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(function () {
+    $("#attendance-audit-form").on("submit", function (event) {
+        event.preventDefault();
+        var result = $("#audit-result");
+        result.removeClass("alert alert-danger alert-success").text("Scanning attendance...");
+        $.ajax({
+            url: "{% url 'scan_attendance_anomalies' %}",
+            method: "POST",
+            data: $(this).serialize()
+        }).done(function (response) {
+            result.addClass("alert alert-success").text(
+                response.message + " Scanned " + response.scanned +
+                " students; " + response.flagged + " alerts need review."
+            );
+            window.location.reload();
+        }).fail(function (response) {
+            var message = response.responseJSON && response.responseJSON.error
+                ? response.responseJSON.error
+                : "The attendance audit could not be completed.";
+            result.addClass("alert alert-danger").text(message);
+        });
+    });
+});
+</script>
+{% endblock custom_js %}

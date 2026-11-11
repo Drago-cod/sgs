@@ -8,10 +8,14 @@ from django.shortcuts import (HttpResponse, HttpResponseRedirect,
 from django.templatetags.static import static
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.views.generic import UpdateView
 
 from .forms import *
 from .models import *
+from .attendance_audit import scan_attendance_date
+from django.utils.dateparse import parse_date
+from django.utils import timezone
 
 
 def admin_home(request):
@@ -563,6 +567,54 @@ def admin_view_attendance(request):
     return render(request, "hod_template/admin_view_attendance.html", context)
 
 
+def admin_attendance_audit(request):
+    anomalies = AttendanceAnomaly.objects.select_related(
+        "student__admin", "reviewed_by"
+    )
+    context = {
+        "page_title": "Attendance Anomaly Audit",
+        "anomalies": anomalies,
+    }
+    return render(request, "hod_template/attendance_audit.html", context)
+
+
+@require_POST
+def scan_attendance_anomalies(request):
+    audit_date = parse_date(request.POST.get("date", ""))
+    if not audit_date:
+        return JsonResponse({"error": "A valid attendance date is required."}, status=400)
+    results = scan_attendance_date(audit_date, request.user)
+    flagged = sum(1 for item in results if item["result"]["anomaly_detected"])
+    return JsonResponse({
+        "scanned": len(results),
+        "flagged": flagged,
+        "message": "Attendance audit completed. Alerts require human verification.",
+    })
+
+
+@require_POST
+def review_attendance_anomaly(request, anomaly_id):
+    outcome = request.POST.get("outcome")
+    notes = request.POST.get("notes", "").strip()
+    valid_outcomes = {choice[0] for choice in AttendanceAnomaly.REVIEW_OUTCOMES}
+    if outcome not in valid_outcomes:
+        return JsonResponse({"error": "Select a valid review outcome."}, status=400)
+    anomaly = get_object_or_404(AttendanceAnomaly, id=anomaly_id)
+    anomaly.review_status = "REVIEWED"
+    anomaly.review_outcome = outcome
+    anomaly.review_notes = notes
+    anomaly.reviewed_by = request.user
+    anomaly.reviewed_at = timezone.now()
+    anomaly.save()
+    AttendanceAuditEvent.objects.create(
+        anomaly=anomaly,
+        event_type="REVIEWED",
+        actor=request.user,
+        details={"outcome": outcome, "notes": notes},
+    )
+    return redirect("admin_attendance_audit")
+
+
 @csrf_exempt
 def get_admin_attendance(request):
     subject_id = request.POST.get('subject')
@@ -578,7 +630,7 @@ def get_admin_attendance(request):
         json_data = []
         for report in attendance_reports:
             data = {
-                "status":  str(report.status),
+                "status": report.attendance_status,
                 "name": str(report.student)
             }
             json_data.append(data)

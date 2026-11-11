@@ -158,7 +158,7 @@ if (attendance_date.length  == 0){
                     for (key in json_data) {
                         var status = json_data[key]['status'] || 'PENDING'
                         div_data += "<div class='col-lg-3 form-group'><label>" + json_data[key]['name'] + "</label><select class='form-control attendance-status' data-student-id='" + json_data[key]['id'] + "'>"
-                        ;['PRESENT', 'TARDY', 'ABSENT', 'PENDING'].forEach(function(option) {
+                        ;['PRESENT', 'TARDY', 'ABSENT', 'EXCUSED', 'DISMISSED', 'PENDING'].forEach(function(option) {
                             div_data += "<option value='" + option + "'" + (status === option ? " selected" : "") + ">" + option.replace('_', ' ') + "</option>"
                         })
                         div_data += "</select></div>"

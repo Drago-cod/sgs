@@ -38,7 +38,21 @@ def _permission_covers_period(permission, period_number):
     if permission.get("is_all_day"):
         return True
     if permission.get("period_number") is not None:
-        return permission.get("period_number") == period_number
+        if permission.get("period_number") != period_number:
+            return False
+    start_time = permission.get("start_time")
+    end_time = permission.get("end_time")
+    timestamp = permission.get("_period_timestamp")
+    if start_time or end_time:
+        if not start_time or not end_time or not timestamp:
+            return False
+        if isinstance(start_time, str):
+            start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+        if isinstance(end_time, str):
+            end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+        return start_time <= timestamp <= end_time
+    if permission.get("period_number") is not None:
+        return True
     return False
 
 
@@ -125,6 +139,8 @@ def evaluate_attendance_dataset(data):
                 for value in timestamps
             ]
             timestamp_consistent = parsed_times == sorted(parsed_times)
+            for record, parsed_time in zip(normalized, parsed_times):
+                record["_parsed_time"] = parsed_time
         except ValueError:
             timestamp_consistent = False
             incomplete = True
@@ -132,6 +148,12 @@ def evaluate_attendance_dataset(data):
         timestamp_consistent = False
 
     def has_permission(period_number):
+        record = next(
+            (item for item in normalized if item["period_number"] == period_number),
+            {},
+        )
+        for permission in permissions:
+            permission["_period_timestamp"] = record.get("_parsed_time")
         return any(
             _permission_covers_period(permission, period_number)
             for permission in permissions
@@ -288,7 +310,7 @@ def build_student_attendance_dataset(student, date):
                     else ("PRESENT" if report and report.status else
                           "ABSENT" if report else "PENDING")
                 ),
-                "timestamp": None,
+                "timestamp": subject.start_time.isoformat() if subject.start_time else None,
                 "teacher_id": subject.staff_id,
                 "attendance_type": subject.attendance_type,
                 "is_scheduled": True,
@@ -307,6 +329,8 @@ def build_student_attendance_dataset(student, date):
             "permission_type": permission.permission_type,
             "period_number": permission.period_number,
             "is_all_day": permission.is_all_day,
+            "start_time": permission.start_time,
+            "end_time": permission.end_time,
         })
 
     for leave in LeaveReportStudent.objects.filter(

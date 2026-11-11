@@ -1,13 +1,23 @@
 import json
 import requests
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.decorators.csrf import csrf_exempt
 
 from .EmailBackend import EmailBackend
-from .models import Attendance, Session, Subject
+from .models import (
+    Attendance,
+    AttendanceAnomaly,
+    AttendanceAuditEvent,
+    Session,
+    Student,
+    Subject,
+)
+from .attendance_audit import dataset_from_request_body, evaluate_attendance_dataset
+from django.utils.dateparse import parse_date
 
 # Create your views here.
 
@@ -46,6 +56,48 @@ def logout_user(request):
     if request.user != None:
         logout(request)
     return redirect("/")
+
+
+@login_required
+def evaluate_attendance_audit(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "POST is required."}, status=405)
+    if request.user.user_type != "1":
+        return JsonResponse({"error": "Administrator access is required."}, status=403)
+    dataset = dataset_from_request_body(request.body)
+    if dataset is None:
+        return JsonResponse({"error": "Attendance dataset is invalid."}, status=400)
+    result = evaluate_attendance_dataset(dataset)
+    student_data = dataset["student"]
+    student_id = student_data.get("id")
+    audit_date = parse_date(dataset["date"])
+    if result["anomaly_detected"] and audit_date:
+        student = Student.objects.filter(admin_id=student_id).first()
+        if student:
+            period_key = result["flagged_period"] or 0
+            anomaly, created = AttendanceAnomaly.objects.get_or_create(
+                student=student,
+                date=audit_date,
+                flagged_period=period_key,
+                defaults={
+                    "flag_type": result["flag_type"],
+                    "confidence_score": result["confidence_score"],
+                    "summary": result["summary"],
+                    "source_records": dataset["period_records"],
+                },
+            )
+            if created:
+                AttendanceAuditEvent.objects.create(
+                    anomaly=anomaly,
+                    event_type="DETECTED",
+                    actor=request.user,
+                    details={
+                        "flag_type": result["flag_type"],
+                        "confidence_score": result["confidence_score"],
+                        "source_records": dataset["period_records"],
+                    },
+                )
+    return JsonResponse(result)
 
 
 @csrf_exempt

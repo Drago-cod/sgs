@@ -185,11 +185,12 @@ if (attendance_date.length  == 0){
                     var div_data = "<hr/><div class='form-group'></div><div class='form-group'> <label>Student Attendance</label><div class='row'>"
 
                     for (key in json_data) {
-                            if (json_data[key]['status'] == 'True'){
-                                div_data += "<div class='col-lg-3 attendance_div_green'><b>"+ json_data[key]['name'] + "</b><br/>Present</div>" 
-                            }else{
-        
+                            if (json_data[key]['status'] == 'PRESENT' || json_data[key]['status'] == 'TARDY'){
+                                div_data += "<div class='col-lg-3 attendance_div_green'><b>"+ json_data[key]['name'] + "</b><br/>"+json_data[key]['status']+"</div>"
+                            }else if (json_data[key]['status'] == 'ABSENT'){
                                 div_data += "<div class='col-lg-3 attendance_div_red'><b>"+ json_data[key]['name'] + "</b><br/>Absent</div>"
+                            }else{
+                                div_data += "<div class='col-lg-3'><b>"+ json_data[key]['name'] + "</b><br/>"+json_data[key]['status']+"</div>"
                             }
                         }
                        // div_data += "<div class='col-lg-3'><div class='form-check custom-control custom-checkbox'><input type='checkbox' class='custom-control-input' " + (json_data[key]['status'] ? "checked='checked'" : "")+" name='student_data[]' value=" + json_data[key]['id'] + " id='checkbox" + json_data[key]['id'] + "' /> <label for='checkbox" + json_data[key]['id'] + "' class='custom-control-label'>" + json_data[key]['name']  + (json_data[key]['status'] ? " [Present] " : " [Absent] ")+"</label></div> </div>"

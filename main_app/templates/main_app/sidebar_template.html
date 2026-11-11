@@ -193,6 +193,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {% url 'admin_attendance_audit' as admin_attendance_audit %}
+                    <a href="{{admin_attendance_audit}}" class="nav-link {% if admin_attendance_audit == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-search"></i>
+                        <p>Attendance Anomaly Audit</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {% url 'student_feedback_message' as student_feedback_message %}
                     <a href="{{ student_feedback_message }}" class="nav-link  {% if student_feedback_message == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comments"></i>

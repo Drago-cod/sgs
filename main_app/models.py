@@ -109,6 +109,8 @@ class Subject(models.Model):
     staff = models.ForeignKey(Staff,on_delete=models.CASCADE,)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     period_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     attendance_type = models.CharField(
         max_length=20, choices=ATTENDANCE_TYPES, default="ACADEMIC")
     updated_at = models.DateTimeField(auto_now=True)
@@ -132,6 +134,8 @@ class AttendanceReport(models.Model):
         ("PRESENT", "Present"),
         ("TARDY", "Tardy"),
         ("ABSENT", "Absent"),
+        ("EXCUSED", "Excused"),
+        ("DISMISSED", "Dismissed"),
     )
 
     student = models.ForeignKey(Student, on_delete=models.DO_NOTHING)
@@ -162,6 +166,8 @@ class StudentAttendancePermission(models.Model):
     approval_status = models.CharField(
         max_length=10, choices=APPROVAL_STATUSES, default="PENDING")
     period_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
     is_all_day = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
     authorized_by = models.ForeignKey(
