@@ -4,7 +4,7 @@ import logging
 
 from django.contrib import messages
 from django.core.files.storage import FileSystemStorage
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import (HttpResponseRedirect, get_object_or_404,redirect, render)
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
@@ -104,7 +104,10 @@ def save_attendance(request):
     date = request.POST.get('date')
     subject_id = request.POST.get('subject')
     session_id = request.POST.get('session')
-    students = json.loads(student_data)
+    try:
+        students = json.loads(student_data)
+    except (TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest("Invalid attendance data")
     try:
         session = get_object_or_404(Session, id=session_id)
         subject = get_object_or_404(Subject, id=subject_id)
@@ -114,17 +117,27 @@ def save_attendance(request):
 
         for student_dict in students:
             student = get_object_or_404(Student, id=student_dict.get('id'))
+            if student.course_id != subject.course_id or student.session_id != session.id:
+                return HttpResponseBadRequest("Student is not enrolled in this class")
 
             # Check if an attendance report already exists for the student and the attendance object
             attendance_report, report_created = AttendanceReport.objects.get_or_create(student=student, attendance=attendance)
 
             # Update the status only if the attendance report was newly created
             if report_created:
-                attendance_report.status = student_dict.get('status')
+                status = str(student_dict.get('status', '')).upper()
+                if status in ('1', 'TRUE'):
+                    status = 'PRESENT'
+                elif status in ('0', 'FALSE'):
+                    status = 'ABSENT'
+                if status not in ('PRESENT', 'TARDY', 'ABSENT', 'PENDING'):
+                    return HttpResponseBadRequest("Invalid attendance status")
+                attendance_report.attendance_status = status
+                attendance_report.status = status in ('PRESENT', 'TARDY')
                 attendance_report.save()
 
-    except Exception as e:
-        return None
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Invalid attendance request")
 
     return HttpResponse("OK")
 
@@ -152,7 +165,7 @@ def get_student_attendance(request):
         for attendance in attendance_data:
             data = {"id": attendance.student.admin.id,
                     "name": attendance.student.admin.last_name + " " + attendance.student.admin.first_name,
-                    "status": attendance.status}
+                    "status": attendance.attendance_status}
             student_data.append(data)
         return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
     except Exception as e:
@@ -163,7 +176,10 @@ def get_student_attendance(request):
 def update_attendance(request):
     student_data = request.POST.get('student_ids')
     date = request.POST.get('date')
-    students = json.loads(student_data)
+    try:
+        students = json.loads(student_data)
+    except (TypeError, json.JSONDecodeError):
+        return HttpResponseBadRequest("Invalid attendance data")
     try:
         attendance = get_object_or_404(Attendance, id=date)
 
@@ -171,10 +187,18 @@ def update_attendance(request):
             student = get_object_or_404(
                 Student, admin_id=student_dict.get('id'))
             attendance_report = get_object_or_404(AttendanceReport, student=student, attendance=attendance)
-            attendance_report.status = student_dict.get('status')
+            status = str(student_dict.get('status', '')).upper()
+            if status in ('1', 'TRUE'):
+                status = 'PRESENT'
+            elif status in ('0', 'FALSE'):
+                status = 'ABSENT'
+            if status not in ('PRESENT', 'TARDY', 'ABSENT', 'PENDING'):
+                return HttpResponseBadRequest("Invalid attendance status")
+            attendance_report.attendance_status = status
+            attendance_report.status = status in ('PRESENT', 'TARDY')
             attendance_report.save()
-    except Exception as e:
-        return None
+    except (TypeError, ValueError):
+        return HttpResponseBadRequest("Invalid attendance request")
 
     return HttpResponse("OK")
 

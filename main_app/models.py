@@ -98,9 +98,19 @@ class Staff(models.Model):
 
 
 class Subject(models.Model):
+    ATTENDANCE_TYPES = (
+        ("ACADEMIC", "Academic"),
+        ("STUDY_HALL", "Study hall"),
+        ("FREE_PERIOD", "Free period"),
+        ("DUAL_ENROLLMENT", "Off-campus dual enrollment"),
+    )
+
     name = models.CharField(max_length=120)
     staff = models.ForeignKey(Staff,on_delete=models.CASCADE,)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    period_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    attendance_type = models.CharField(
+        max_length=20, choices=ATTENDANCE_TYPES, default="ACADEMIC")
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -117,11 +127,52 @@ class Attendance(models.Model):
 
 
 class AttendanceReport(models.Model):
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("PRESENT", "Present"),
+        ("TARDY", "Tardy"),
+        ("ABSENT", "Absent"),
+    )
+
     student = models.ForeignKey(Student, on_delete=models.DO_NOTHING)
     attendance = models.ForeignKey(Attendance, on_delete=models.CASCADE)
     status = models.BooleanField(default=False)
+    attendance_status = models.CharField(
+        max_length=10, choices=STATUS_CHOICES, default="PENDING")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class StudentAttendancePermission(models.Model):
+    PERMISSION_TYPES = (
+        ("EXCUSED", "Excused absence"),
+        ("DISMISSED", "Early dismissal"),
+        ("SCHOOL_ACTIVITY", "School-sanctioned activity"),
+        ("OFF_CAMPUS", "Authorized off-campus activity"),
+    )
+    APPROVAL_STATUSES = (
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("DENIED", "Denied"),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    date = models.DateField()
+    permission_type = models.CharField(max_length=20, choices=PERMISSION_TYPES)
+    approval_status = models.CharField(
+        max_length=10, choices=APPROVAL_STATUSES, default="PENDING")
+    period_number = models.PositiveSmallIntegerField(null=True, blank=True)
+    is_all_day = models.BooleanField(default=False)
+    active = models.BooleanField(default=True)
+    authorized_by = models.ForeignKey(
+        Staff, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["student", "date", "active"]),
+        ]
 
 
 class LeaveReportStudent(models.Model):
@@ -217,6 +268,62 @@ class StudentMessage(models.Model):
 
     def __str__(self):
         return f"From {self.sender.get_full_name()} to {self.receiver.get_full_name()} - {self.subject}"
+
+
+class AttendanceAnomaly(models.Model):
+    REVIEW_STATUSES = (
+        ("PENDING", "Needs human review"),
+        ("REVIEWED", "Reviewed"),
+    )
+    REVIEW_OUTCOMES = (
+        ("NO_ACTION", "No action required"),
+        ("RECORDS_CORRECTED", "Attendance records corrected"),
+        ("CONFIRMED", "Discrepancy confirmed"),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    date = models.DateField()
+    flagged_period = models.PositiveSmallIntegerField(default=0)
+    flag_type = models.CharField(max_length=30)
+    confidence_score = models.FloatField()
+    summary = models.TextField()
+    source_records = models.JSONField(default=list)
+    review_status = models.CharField(
+        max_length=10, choices=REVIEW_STATUSES, default="PENDING")
+    review_outcome = models.CharField(
+        max_length=20, choices=REVIEW_OUTCOMES, blank=True)
+    review_notes = models.TextField(blank=True)
+    reviewed_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    detected_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "student__admin__last_name", "flagged_period"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["student", "date", "flagged_period"],
+                name="unique_attendance_anomaly_per_period"),
+        ]
+
+
+class AttendanceAuditEvent(models.Model):
+    EVENT_TYPES = (
+        ("DETECTED", "Anomaly detected"),
+        ("REVIEWED", "Human review completed"),
+    )
+
+    anomaly = models.ForeignKey(
+        AttendanceAnomaly, on_delete=models.CASCADE, related_name="audit_events")
+    event_type = models.CharField(max_length=10, choices=EVENT_TYPES)
+    actor = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
 
 
 # Last additional model.

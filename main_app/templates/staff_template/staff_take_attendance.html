@@ -95,7 +95,7 @@ if (subject.length  == 0 || session.length == 0){
                     var div_data = "<hr/><div class='form-group'></div><div class='form-group'> <label>Attendance Date</label><input type='date' class='form-control' name='attendance_date' id='attendance_date' ><div class='row'>"
 
                     for (key in json_data) {
-                        div_data += "<div class='col-lg-3'><div class='form-check custom-control custom-checkbox'><input type='checkbox' class='custom-control-input' checked='checked' name='student_data[]' value=" + json_data[key]['id'] + " id='checkbox" + json_data[key]['id'] + "' /> <label for='checkbox" + json_data[key]['id'] + "' class='custom-control-label'>" + json_data[key]['name'] + "</label></div> </div>"
+                        div_data += "<div class='col-lg-3 form-group'><label>" + json_data[key]['name'] + "</label><input type='hidden' name='student_data[]' value='" + json_data[key]['id'] + "'><select class='form-control attendance-status' data-student-id='" + json_data[key]['id'] + "'><option value='PRESENT'>Present</option><option value='TARDY'>Tardy</option><option value='ABSENT'>Absent</option><option value='PENDING'>Pending verification</option></select></div>"
                     }
                     div_data += "</div></div>"
                     div_data += "<div class='form-group'><button id='save_attendance' class='btn btn-success' type='button'>Save Attendance</button></div>"
@@ -109,13 +109,8 @@ if (subject.length  == 0 || session.length == 0){
             $(document).on('click', '#save_attendance', function () {
                 $(this).attr("disabled","disabled")
                 $(this).text("Saving Attendance Data...")
-                var student_data = $("input[name='student_data[]']").map(function () {
-                    if ($(this).is(":checked")){
-                    return {'id':$(this).val(), 'status': 1};
-    
-                    }
-                    return {'id':$(this).val(), 'status': 0};
-    
+                var student_data = $(".attendance-status").map(function () {
+                    return {'id':$(this).data('student-id'), 'status':$(this).val()};
                 }).get()
                 var attendance_date = $('#attendance_date').val()
                 if (attendance_date.length < 10){

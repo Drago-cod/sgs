@@ -156,7 +156,12 @@ if (attendance_date.length  == 0){
                     var div_data = "<hr/><div class='form-group'></div><div class='form-group'> <label>Student Attendance</label><div class='row'>"
 
                     for (key in json_data) {
-                        div_data += "<div class='col-lg-3'><div class='form-check custom-control custom-checkbox'><input type='checkbox' class='custom-control-input' " + (json_data[key]['status'] ? "checked='checked'" : "")+" name='student_data[]' value=" + json_data[key]['id'] + " id='checkbox" + json_data[key]['id'] + "' /> <label for='checkbox" + json_data[key]['id'] + "' class='custom-control-label'>" + json_data[key]['name']  + (json_data[key]['status'] ? " [Present] " : " [Absent] ")+"</label></div> </div>"
+                        var status = json_data[key]['status'] || 'PENDING'
+                        div_data += "<div class='col-lg-3 form-group'><label>" + json_data[key]['name'] + "</label><select class='form-control attendance-status' data-student-id='" + json_data[key]['id'] + "'>"
+                        ;['PRESENT', 'TARDY', 'ABSENT', 'PENDING'].forEach(function(option) {
+                            div_data += "<option value='" + option + "'" + (status === option ? " selected" : "") + ">" + option.replace('_', ' ') + "</option>"
+                        })
+                        div_data += "</select></div>"
                     }
                     div_data += "</div></div>"
                     div_data += "<div class='form-group'><button id='save_attendance' class='btn btn-success' type='button'>Save Attendance</button></div>"
@@ -170,13 +175,8 @@ if (attendance_date.length  == 0){
         $(document).on('click', '#save_attendance', function () {
             //$(this).attr("disabled","disabled")
             $(this).text("Updating Attendance Data...")
-            var student_data = $("input[name='student_data[]']").map(function () {
-                if ($(this).is(":checked")){
-                return {'id':$(this).val(), 'status': 1};
-
-                }
-                return {'id':$(this).val(), 'status': 0};
-
+            var student_data = $(".attendance-status").map(function () {
+                return {'id':$(this).data('student-id'), 'status':$(this).val()};
             }).get()
       
             student_data = JSON.stringify(student_data)

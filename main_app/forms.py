@@ -103,7 +103,7 @@ class SubjectForm(FormSettings):
 
     class Meta:
         model = Subject
-        fields = ['name', 'staff', 'course']
+        fields = ['name', 'staff', 'course', 'period_number', 'attendance_type']
 
 
 class SessionForm(FormSettings):
