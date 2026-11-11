@@ -19,12 +19,17 @@ VALID_STATUSES = {
     "PRESENT", "TARDY", "ABSENT", "EXCUSED", "DISMISSED", "PENDING",
 }
 NON_INSTRUCTIONAL_TYPES = {"STUDY_HALL", "FREE_PERIOD", "DUAL_ENROLLMENT"}
+VALID_PERMISSION_TYPES = {
+    "EXCUSED", "DISMISSED", "SCHOOL_ACTIVITY", "OFF_CAMPUS",
+}
 
 
 def _permission_covers_period(permission, period_number):
     if not permission.get("active") or not permission.get("approved"):
         return False
     if permission.get("date") is None:
+        return False
+    if str(permission.get("permission_type", "")).upper() not in VALID_PERMISSION_TYPES:
         return False
     permission_date = permission["date"]
     record_date = permission.get("_record_date")
@@ -91,6 +96,8 @@ def evaluate_attendance_dataset(data):
         active = permission.get("active") is True
         approval_status = str(permission.get("approval_status", "")).upper()
         approved = permission.get("approved") is True or approval_status == "APPROVED"
+        if active and not permission.get("permission_type"):
+            incomplete = True
         if active and approval_status == "PENDING":
             incomplete = True
         if active and approved:
@@ -248,33 +255,39 @@ def evaluate_attendance_dataset(data):
 
 
 def build_student_attendance_dataset(student, date):
-    attendances = list(
-        Attendance.objects.filter(
+    scheduled_subjects = list(
+        student.course.subject_set.filter(
+            period_number__isnull=False
+        ).select_related("staff").order_by("period_number", "id")
+    ) if student.course_id else []
+    attendances = {
+        attendance.subject_id: attendance
+        for attendance in Attendance.objects.filter(
             date=date,
             session=student.session,
             subject__course=student.course,
+            subject__period_number__isnull=False,
         ).select_related("subject", "subject__staff")
-        .order_by("subject__period_number", "id")
-    )
+    }
     period_records = []
-    schedule_complete = bool(attendances)
-    for attendance in attendances:
-        subject = attendance.subject
-        if subject.period_number is None:
-            schedule_complete = False
-            continue
-        reports = list(
-            AttendanceReport.objects.filter(
-                attendance=attendance, student=student
-            ).order_by("id")
-        )
+    schedule_complete = bool(scheduled_subjects)
+    for subject in scheduled_subjects:
+        attendance = attendances.get(subject.id)
+        reports = list(AttendanceReport.objects.filter(
+            attendance=attendance, student=student
+        ).order_by("id")) if attendance else []
         if not reports:
             reports = [None]
         for report in reports:
             period_records.append({
                 "period_number": subject.period_number,
                 "period_name": subject.name,
-                "status": report.attendance_status if report else "PENDING",
+                "status": (
+                    report.attendance_status
+                    if report and report.attendance_status != "PENDING"
+                    else ("PRESENT" if report and report.status else
+                          "ABSENT" if report else "PENDING")
+                ),
                 "timestamp": None,
                 "teacher_id": subject.staff_id,
                 "attendance_type": subject.attendance_type,
