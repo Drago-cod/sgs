@@ -605,10 +605,7 @@ def admin_view_profile(request):
                 if password != None:
                     custom_user.set_password(password)
                 if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    custom_user.profile_pic = passport_url
+                    custom_user.profile_pic = passport
                 custom_user.first_name = first_name
                 custom_user.last_name = last_name
                 custom_user.save()

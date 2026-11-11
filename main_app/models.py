@@ -47,7 +47,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     user_type = models.CharField(default=1, choices=USER_TYPE, max_length=1)
     gender = models.CharField(max_length=1, choices=GENDER)
-    profile_pic = models.ImageField()
+    profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, default='')
     address = models.TextField()
     fcm_token = models.TextField(default="")  # For firebase notifications
     created_at = models.DateTimeField(auto_now_add=True)

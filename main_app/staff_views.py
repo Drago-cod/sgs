@@ -243,10 +243,7 @@ def staff_view_profile(request):
                 if password != None:
                     admin.set_password(password)
                 if passport != None:
-                    fs = FileSystemStorage()
-                    filename = fs.save(passport.name, passport)
-                    passport_url = fs.url(filename)
-                    admin.profile_pic = passport_url
+                    admin.profile_pic = passport
                 admin.first_name = first_name
                 admin.last_name = last_name
                 admin.address = address
