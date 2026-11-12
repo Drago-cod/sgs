@@ -120,15 +120,71 @@ class SessionForm(FormSettings):
 
 
 class LeaveReportStaffForm(FormSettings):
+    leave_category = forms.ChoiceField(
+        choices=[
+            ('annual', 'Annual Leave'),
+            ('sick', 'Sick Leave'),
+            ('personal', 'Personal Leave'),
+            ('study', 'Study Leave'),
+            ('maternity', 'Maternity/Paternity Leave'),
+        ],
+        required=True,
+        label='Leave Category *'
+    )
+    start_date = forms.DateField(
+        required=True,
+        label='Start Date *',
+        widget=DateInput(attrs={'type': 'date'})
+    )
+    start_time = forms.TimeField(
+        required=True,
+        label='Start Time *',
+        widget=forms.TimeInput(attrs={'type': 'time'})
+    )
+    end_date = forms.DateField(
+        required=True,
+        label='End Date *',
+        widget=DateInput(attrs={'type': 'date'})
+    )
+    end_time = forms.TimeField(
+        required=True,
+        label='End Time *',
+        widget=forms.TimeInput(attrs={'type': 'time'})
+    )
+    message = forms.CharField(
+        required=True,
+        label='Reason / Justification *',
+        widget=forms.Textarea(attrs={
+            'rows': 4,
+            'placeholder': 'Provide clear reason for leave...'
+        })
+    )
+
     def __init__(self, *args, **kwargs):
         super(LeaveReportStaffForm, self).__init__(*args, **kwargs)
+        self.fields['leave_category'].widget.attrs.update({'class': 'form-control'})
+        self.fields['start_date'].widget.attrs.update({'class': 'form-control'})
+        self.fields['start_time'].widget.attrs.update({'class': 'form-control'})
+        self.fields['end_date'].widget.attrs.update({'class': 'form-control'})
+        self.fields['end_time'].widget.attrs.update({'class': 'form-control'})
+        self.fields['message'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        start_time = cleaned_data.get('start_time')
+        end_date = cleaned_data.get('end_date')
+        end_time = cleaned_data.get('end_time')
+
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError('End date cannot be earlier than the start date.')
+        if start_date == end_date and start_time and end_time and end_time < start_time:
+            raise forms.ValidationError('End time cannot be earlier than the start time on the same day.')
+        return cleaned_data
 
     class Meta:
         model = LeaveReportStaff
-        fields = ['date', 'message']
-        widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
-        }
+        fields = ['leave_category', 'start_date', 'start_time', 'end_date', 'end_time', 'message']
 
 
 class FeedbackStaffForm(FormSettings):
@@ -142,15 +198,56 @@ class FeedbackStaffForm(FormSettings):
 
 
 class LeaveReportStudentForm(FormSettings):
+    start_date = forms.DateField(
+        required=True,
+        label='Start Date *',
+        widget=DateInput(attrs={'type': 'date'})
+    )
+    start_time = forms.TimeField(
+        required=True,
+        label='Start Time *',
+        widget=forms.TimeInput(attrs={'type': 'time'})
+    )
+    end_date = forms.DateField(
+        required=True,
+        label='End Date *',
+        widget=DateInput(attrs={'type': 'date'})
+    )
+    end_time = forms.TimeField(
+        required=True,
+        label='End Time *',
+        widget=forms.TimeInput(attrs={'type': 'time'})
+    )
+    message = forms.CharField(
+        required=True,
+        label='Reason / Justification *',
+        widget=forms.Textarea(attrs={'rows': 4, 'placeholder': 'Provide clear reason for leave...'}),
+    )
+
     def __init__(self, *args, **kwargs):
         super(LeaveReportStudentForm, self).__init__(*args, **kwargs)
+        self.fields['start_date'].widget.attrs.update({'class': 'form-control'})
+        self.fields['start_time'].widget.attrs.update({'class': 'form-control'})
+        self.fields['end_date'].widget.attrs.update({'class': 'form-control'})
+        self.fields['end_time'].widget.attrs.update({'class': 'form-control'})
+        self.fields['message'].widget.attrs.update({'class': 'form-control'})
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get('start_date')
+        start_time = cleaned_data.get('start_time')
+        end_date = cleaned_data.get('end_date')
+        end_time = cleaned_data.get('end_time')
+
+        if start_date and end_date and end_date < start_date:
+            raise forms.ValidationError('End date cannot be earlier than the start date.')
+        if start_date == end_date and start_time and end_time and end_time < start_time:
+            raise forms.ValidationError('End time cannot be earlier than the start time on the same day.')
+        return cleaned_data
 
     class Meta:
         model = LeaveReportStudent
-        fields = ['date', 'message']
-        widgets = {
-            'date': DateInput(attrs={'type': 'date'}),
-        }
+        fields = ['start_date', 'start_time', 'end_date', 'end_time', 'message']
 
 
 class FeedbackStudentForm(FormSettings):

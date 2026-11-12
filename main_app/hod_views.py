@@ -18,6 +18,48 @@ from django.utils.dateparse import parse_date
 from django.utils import timezone
 
 
+def _build_admin_notifications(request):
+    notifications = []
+
+    for leave in LeaveReportStaff.objects.filter(status=0).order_by('-created_at')[:5]:
+        notifications.append({
+            'category': 'Staff Leave',
+            'title': 'Pending staff leave request',
+            'message': f"{leave.staff.admin.get_full_name()} requested leave for {leave.date}",
+            'created_at': leave.created_at,
+            'link': reverse('view_staff_leave'),
+        })
+
+    for message in StudentMessage.objects.filter(receiver=request.user, is_read=False).order_by('-created_at')[:5]:
+        notifications.append({
+            'category': 'Message',
+            'title': 'New message',
+            'message': f"{message.sender.get_full_name()} sent a message: {message.subject}",
+            'created_at': message.created_at,
+            'link': reverse('student_messages') if message.sender.user_type == '3' else reverse('view_staff_leave'),
+        })
+
+    for feedback in FeedbackStaff.objects.filter(reply__in=['', None]).order_by('-created_at')[:5]:
+        notifications.append({
+            'category': 'Feedback',
+            'title': 'Staff feedback awaiting reply',
+            'message': f"{feedback.staff.admin.get_full_name()} submitted feedback.",
+            'created_at': feedback.created_at,
+            'link': reverse('staff_feedback_message'),
+        })
+
+    for feedback in FeedbackStudent.objects.filter(reply__in=['', None]).order_by('-created_at')[:5]:
+        notifications.append({
+            'category': 'Feedback',
+            'title': 'Student feedback awaiting reply',
+            'message': f"{feedback.student.admin.get_full_name()} submitted feedback.",
+            'created_at': feedback.created_at,
+            'link': reverse('student_feedback_message'),
+        })
+
+    return sorted(notifications, key=lambda item: item['created_at'], reverse=True)[:10]
+
+
 def admin_home(request):
     total_staff = Staff.objects.all().count()
     total_students = Student.objects.all().count()
@@ -39,7 +81,8 @@ def admin_home(request):
         'total_course': total_course,
         'total_subject': total_subject,
         'subject_list': subject_list,
-        'attendance_list': attendance_list
+        'attendance_list': attendance_list,
+        'admin_notifications': _build_admin_notifications(request)
 
     }
     return render(request, 'hod_template/home_content.html', context)
@@ -508,6 +551,9 @@ def staff_feedback_message(request):
 @csrf_exempt
 def view_staff_leave(request):
     if request.method != 'POST':
+        if getattr(request.user, 'user_type', None) == '2':
+            return redirect('staff_home')
+
         allLeave = LeaveReportStaff.objects.all()
         context = {
             'allLeave': allLeave,
@@ -515,6 +561,9 @@ def view_staff_leave(request):
         }
         return render(request, "hod_template/staff_leave_view.html", context)
     else:
+        if getattr(request.user, 'user_type', None) != '1':
+            return HttpResponse(False)
+
         id = request.POST.get('id')
         status = request.POST.get('status')
         if (status == '1'):
@@ -533,26 +582,36 @@ def view_staff_leave(request):
 @csrf_exempt
 def view_student_leave(request):
     if request.method != 'POST':
-        allLeave = LeaveReportStudent.objects.all()
+        if getattr(request.user, 'user_type', None) == '1':
+            allLeave = LeaveReportStudent.objects.all()
+        elif getattr(request.user, 'user_type', None) == '2':
+            staff = get_object_or_404(Staff, admin=request.user)
+            allLeave = LeaveReportStudent.objects.filter(student__course=staff.course)
+        else:
+            return redirect('login_page')
+
         context = {
             'allLeave': allLeave,
             'page_title': 'Leave Applications From Students'
         }
         return render(request, "hod_template/student_leave_view.html", context)
     else:
-        id = request.POST.get('id')
-        status = request.POST.get('status')
-        if (status == '1'):
-            status = 1
+        leave = get_object_or_404(LeaveReportStudent, id=request.POST.get('id'))
+        if getattr(request.user, 'user_type', None) == '1':
+            allowed = True
+        elif getattr(request.user, 'user_type', None) == '2':
+            staff = get_object_or_404(Staff, admin=request.user)
+            allowed = staff.class_teacher and leave.student.course == staff.course
         else:
-            status = -1
-        try:
-            leave = get_object_or_404(LeaveReportStudent, id=id)
-            leave.status = status
-            leave.save()
-            return HttpResponse(True)
-        except Exception as e:
-            return False
+            allowed = False
+
+        if not allowed:
+            return HttpResponse(False)
+
+        status = request.POST.get('status')
+        leave.status = 1 if status == '1' else -1
+        leave.save()
+        return HttpResponse(True)
 
 
 def admin_view_attendance(request):

@@ -8,49 +8,76 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <!-- general form elements -->
                 <div class="card card-primary">
                     <div class="card-header">
-                        <h3 class="card-title">{{page_title}}</h3>
+                        <h3 class="card-title">Apply for leave</h3>
                     </div>
-
-                    {% include "main_app/form_template.html" with messages=messages  form=form button_text="Apply For Leave"%}
+                    <div class="card-body">
+                        <form method="post">
+                            {% csrf_token %}
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    {{ form.start_date.label_tag }}
+                                    {{ form.start_date }}
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    {{ form.start_time.label_tag }}
+                                    {{ form.start_time }}
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 form-group">
+                                    {{ form.end_date.label_tag }}
+                                    {{ form.end_date }}
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    {{ form.end_time.label_tag }}
+                                    {{ form.end_time }}
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                {{ form.message.label_tag }}
+                                {{ form.message }}
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Apply For Leave</button>
+                        </form>
+                    </div>
                 </div>
-                <!-- /.card -->
-<div class="card card-primary">
-    <div class="card-header"><h3 class="card-title">{{page_title}}</h3></div>
-   <div class="table">
 
-       <table class="table table-bordered">
-           <tr>
-               <th>ID</th>
-               <th>Date</th>
-               <th>Message</th>
-                <th>Status</th>
-        </tr>
-        {% for leave in leave_history %}
-        <tr>
-            <td>{{forloop.counter}}</td>
-            <td>{{leave.date}}</td>
-              <td>{{leave.message}}</td>
-              <td>
-                  
-                  {% if leave.status == 0 %}
-                  <span class="badge badge-warning">Pending</span>
-                  {% elif leave.status == 1 %}
-                  <span class="badge badge-success">Accepted</span>
-                  
-                    {% else %}
-                    <span class="badge badge-danger">Rejected</span>
-                    
-                    {% endif %}
-                    
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-    </div>
+                <div class="card card-primary">
+                    <div class="card-header"><h3 class="card-title">Leave History</h3></div>
+                    <div class="table">
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                            </tr>
+                            {% for leave in leave_history %}
+                            <tr>
+                                <td>{{forloop.counter}}</td>
+                                <td>{{leave.date}}</td>
+                                <td>{{leave.message}}</td>
+                                <td>
+                                    {% if leave.status == 0 %}
+                                    <span class="badge badge-warning">Pending</span>
+                                    {% elif leave.status == 1 %}
+                                    <span class="badge badge-success">Accepted</span>
+                                    {% else %}
+                                    <span class="badge badge-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

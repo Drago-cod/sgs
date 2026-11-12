@@ -183,7 +183,11 @@ class StudentAttendancePermission(models.Model):
 
 class LeaveReportStudent(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    date = models.CharField(max_length=60)
+    start_date = models.DateField(null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    date = models.CharField(max_length=120, blank=True, default='')
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -192,7 +196,11 @@ class LeaveReportStudent(models.Model):
 
 class LeaveReportStaff(models.Model):
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
-    date = models.CharField(max_length=60)
+    start_date = models.DateField(null=True, blank=True)
+    start_time = models.TimeField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    date = models.CharField(max_length=120, blank=True, default='')
     message = models.TextField()
     status = models.SmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

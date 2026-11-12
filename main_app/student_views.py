@@ -105,8 +105,20 @@ def student_apply_leave(request):
     if request.method == 'POST':
         if form.is_valid():
             try:
-                obj = form.save(commit=False)
-                obj.student = student
+                start_date = form.cleaned_data['start_date']
+                start_time = form.cleaned_data['start_time']
+                end_date = form.cleaned_data['end_date']
+                end_time = form.cleaned_data['end_time']
+                obj = LeaveReportStudent(
+                    student=student,
+                    start_date=start_date,
+                    start_time=start_time,
+                    end_date=end_date,
+                    end_time=end_time,
+                    date=f"{start_date} {start_time} to {end_date} {end_time}",
+                    message=form.cleaned_data['message'],
+                    status=0,
+                )
                 obj.save()
                 messages.success(
                     request, "Application for leave has been submitted for review")

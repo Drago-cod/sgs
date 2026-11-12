@@ -270,6 +270,32 @@
         </div>
         <!-- /.row -->
 
+        {% if admin_notifications %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card chart-card">
+                    <div class="card-header grad-header-navy">
+                        <h3 class="card-title"><i class="fas fa-bell mr-2"></i> Recent Admin Notifications</h3>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush">
+                            {% for notification in admin_notifications %}
+                            <a href="{{ notification.link }}" class="list-group-item list-group-item-action">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong>{{ notification.category }}</strong>
+                                    <small class="text-muted">{{ notification.created_at|date:'M d, Y H:i' }}</small>
+                                </div>
+                                <div class="font-weight-bold">{{ notification.title }}</div>
+                                <div class="text-muted">{{ notification.message }}</div>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Charts Row -->
         <div class="row mb-4">
             <div class="col-lg-6 mb-3">

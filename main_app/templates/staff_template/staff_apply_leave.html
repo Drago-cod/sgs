@@ -3,54 +3,263 @@
 {% block page_title %}{{page_title}}{% endblock page_title %}
 
 {% block content %}
+<style>
+    .leave-application-shell {
+        background: #f2f4f7;
+        padding: 0;
+    }
+    .leave-header {
+        background: #f5f7fa;
+        border: 1px solid #dadfe6;
+        border-radius: 14px 14px 0 0;
+        padding: 20px 26px 18px;
+        box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    }
+    .leave-header .eyebrow {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #2d6cdf;
+        margin-bottom: 10px;
+    }
+    .leave-header h1 {
+        margin: 0;
+        font-size: 2rem;
+        line-height: 1.2;
+        font-weight: 800;
+        color: #1f2d3d;
+    }
+    .leave-form-panel {
+        background: #f5f7fa;
+        border: 1px solid #dfe4ea;
+        border-top: none;
+        border-radius: 0 0 14px 14px;
+        padding: 26px 28px 8px;
+    }
+    .leave-form-panel h2 {
+        margin: 0 0 10px;
+        font-size: 1.65rem;
+        font-weight: 700;
+        color: #1d2733;
+    }
+    .leave-form-panel .subheading {
+        margin: 0 0 20px;
+        color: #535d6c;
+        font-size: 1.02rem;
+    }
+    .leave-form-grid {
+        display: grid;
+        gap: 18px;
+    }
+    .leave-input,
+    .leave-textarea,
+    .leave-select {
+        width: 100%;
+        border: 1px solid #c9ced6;
+        border-radius: 8px;
+        min-height: 52px;
+        padding: 12px 14px;
+        font-size: 1.05rem;
+        color: #1f2d3d;
+        background: #fff;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .leave-textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+    .leave-input:focus,
+    .leave-textarea:focus,
+    .leave-select:focus {
+        outline: none;
+        border-color: #2b7de9;
+        box-shadow: 0 0 0 3px rgba(43,125,233,0.10);
+    }
+    .leave-form-row {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+    }
+    .leave-field {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .leave-field label {
+        font-weight: 700;
+        color: #233245;
+        font-size: 1.02rem;
+    }
+    .leave-field textarea,
+    .leave-field input,
+    .leave-field select {
+        font-family: inherit;
+    }
+    .leave-form-panel .error-box {
+        display: none;
+    }
+    .leave-form-panel form:invalid .error-box {
+        display: block;
+        margin-top: 14px;
+        background: #5a6b7d;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 6px;
+        padding: 12px 16px;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.06);
+    }
+    .leave-history-card {
+        margin-top: 28px;
+        background: #f5f7fa;
+        border: 1px solid #dfe4ea;
+        border-radius: 14px;
+        overflow: hidden;
+    }
+    .leave-history-card .history-header {
+        padding: 24px 24px 14px;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: #1f2d3d;
+    }
+    .leave-history-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .leave-history-table th,
+    .leave-history-table td {
+        padding: 12px 16px;
+        border-top: 1px solid #dfe4ea;
+        vertical-align: top;
+    }
+    .leave-history-table th {
+        background: #eef3f8;
+        color: #2b3a4a;
+        font-weight: 700;
+    }
+    .leave-history-table td {
+        color: #2b3a4a;
+        background: #fff;
+    }
+    .badge {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+    .badge-warning {
+        background: #fff0d6;
+        color: #a85d00;
+    }
+    .badge-success {
+        background: #dbf3e2;
+        color: #1f7b49;
+    }
+    .badge-danger {
+        background: #fde0e0;
+        color: #d24646;
+    }
+    @media (max-width: 767px) {
+        .leave-form-row {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 
-<section class="content">
+<section class="content leave-application-shell">
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
-                <!-- general form elements -->
-                <div class="card card-primary">
-                    <div class="card-header">
-                        <h3 class="card-title">{{page_title}}</h3>
-                    </div>
-
-                    {% include "main_app/form_template.html" with messages=messages  form=form button_text="Apply For Leave"%}
+                <div class="leave-header">
+                    <div class="eyebrow">Communication / Apply for Leave</div>
+                    <h1>Staff Leave Application</h1>
                 </div>
-                <!-- /.card -->
-<div class="card card-primary">
-    <div class="card-header"><h3 class="card-title">{{page_title}}</h3>
-   <div class="table">
 
-       <table class="table table-bordered">
-           <tr>
-               <th>ID</th>
-               <th>Date</th>
-               <th>Message</th>
-            <th>Status</th>
-        </tr>
-        {% for leave in leave_history %}
-        <tr>
-            <td>{{forloop.counter}}</td>
-            <td>{{leave.date}}</td>
-              <td>{{leave.message}}</td>
-              <td>
-                  
-                  {% if leave.status == 0 %}
-                  <span class="badge badge-warning">Pending</span>
-                  {% elif leave.status == 1 %}
-                  <span class="badge badge-success">Accepted</span>
-                  
+                <div class="leave-form-panel">
+                    <h2>Submit New Leave Request</h2>
+                    <p class="subheading">Routed immediately to User, Admin's Leave Management queue</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="leave-form-grid">
+                            <div class="leave-field">
+                                {{ form.leave_category.label_tag }}
+                                {{ form.leave_category }}
+                            </div>
+
+                            <div class="leave-form-row">
+                                <div class="leave-field">
+                                    {{ form.start_date.label_tag }}
+                                    {{ form.start_date }}
+                                </div>
+                                <div class="leave-field">
+                                    {{ form.start_time.label_tag }}
+                                    {{ form.start_time }}
+                                </div>
+                            </div>
+
+                            <div class="leave-form-row">
+                                <div class="leave-field">
+                                    {{ form.end_date.label_tag }}
+                                    {{ form.end_date }}
+                                </div>
+                                <div class="leave-field">
+                                    {{ form.end_time.label_tag }}
+                                    {{ form.end_time }}
+                                </div>
+                            </div>
+
+                            <div class="leave-field">
+                                {{ form.message.label_tag }}
+                                {{ form.message }}
+                            </div>
+                        </div>
+
+                        <div class="error-box">Please fill out this field.</div>
+
+                        <div class="card-footer" style="padding: 0; margin-top: 18px; border: 0; background: transparent;">
+                            <button type="submit" class="btn btn-primary btn-block" style="background: #2d6cdf; border-color: #2d6cdf; font-weight: 700; padding: 12px 18px; border-radius: 8px;">Apply For Leave</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="leave-history-card">
+                    <div class="history-header">My Leave Request History</div>
+                    {% if leave_history %}
+                    <table class="leave-history-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Date</th>
+                                <th>Message</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for leave in leave_history %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ leave.date }}</td>
+                                <td>{{ leave.message }}</td>
+                                <td>
+                                    {% if leave.status == 0 %}
+                                    <span class="badge badge-warning">Pending</span>
+                                    {% elif leave.status == 1 %}
+                                    <span class="badge badge-success">Accepted</span>
+                                    {% else %}
+                                    <span class="badge badge-danger">Rejected</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                     {% else %}
-                    <span class="badge badge-danger">Rejected</span>
-                    
+                    <div style="padding: 18px 20px 22px; color: #5f6d7d; font-size: 1.05rem; background: #fff;">No leave applications submitted yet.</div>
                     {% endif %}
-                    
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-    </div>
-    </div>
+                </div>
             </div>
         </div>
     </div>

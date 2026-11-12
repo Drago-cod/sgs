@@ -214,8 +214,23 @@ def staff_apply_leave(request):
     if request.method == 'POST':
         if form.is_valid():
             try:
-                obj = form.save(commit=False)
-                obj.staff = staff
+                start_date = form.cleaned_data['start_date']
+                start_time = form.cleaned_data['start_time']
+                end_date = form.cleaned_data['end_date']
+                end_time = form.cleaned_data['end_time']
+                category = form.cleaned_data['leave_category']
+                reason = form.cleaned_data['message']
+
+                obj = LeaveReportStaff(
+                    staff=staff,
+                    start_date=start_date,
+                    start_time=start_time,
+                    end_date=end_date,
+                    end_time=end_time,
+                    date=f"{start_date} {start_time} to {end_date} {end_time}",
+                    message=f"[{category.title()}] {reason}",
+                    status=0
+                )
                 obj.save()
                 messages.success(
                     request, "Application for leave has been submitted for review")
@@ -538,61 +553,75 @@ def view_class_students(request):
 def send_class_results_sms(request):
     staff = get_object_or_404(Staff, admin=request.user)
     if not staff.class_teacher:
+        if request.method == 'GET':
+            messages.error(request, 'You are not authorized to access this page')
+            return redirect('staff_home')
         return JsonResponse({
             'status': False,
             'message': 'Unauthorized access'
         })
 
-    if request.method == 'POST':
-        try:
-            students = Student.objects.filter(course=staff.course)
-            success_count = 0
-            failure_count = 0
+    if request.method not in ('GET', 'POST'):
+        return JsonResponse({'status': False, 'message': 'Method not allowed'}, status=405)
 
-            for student in students:
-                results = StudentResult.objects.filter(student=student)
-                if results.exists():
-                    message = f"Dear Parent/Guardian,\nResults for {student.admin.get_full_name()}:\n"
-                    for result in results:
-                        total_score = result.test + result.exam
-                        grade = calculate_grade(total_score)
-                        message += f"\n{result.subject.name}:\nTest: {result.test}\nExam: {result.exam}\nTotal: {total_score}\nGrade: {grade}\n"
-                    
-                    client = vonage.Client(
-                        api_key=settings.VONAGE_API_KEY,
-                        api_secret=settings.VONAGE_API_SECRET
-                    )
-                    sms = vonage.Sms(client)
-                    
-                    phone_number = student.phone_number
-                    if not phone_number.startswith('+'):
-                        phone_number = '+234' + phone_number.lstrip('0')
-                    
-                    response = sms.send_message({
-                        'from': settings.VONAGE_BRAND_NAME,
-                        'to': phone_number,
-                        'text': message
-                    })
-                    
-                    if response['messages'][0]['status'] == '0':
-                        SMSLog.objects.create(
-                            student=student,
-                            staff=staff,
-                            message=message,
-                            status=True
-                        )
-                        success_count += 1
-                    else:
-                        failure_count += 1
-            return JsonResponse({
-                'status': True,
-                'message': f'Successfully sent {success_count} messages. Failed: {failure_count}'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'status': False,
-                'message': str(e)
-            })
+    try:
+        students = Student.objects.filter(course=staff.course)
+        success_count = 0
+        failure_count = 0
+
+        if not settings.TWILIO_ACCOUNT_SID or not settings.TWILIO_AUTH_TOKEN or not settings.TWILIO_PHONE_NUMBER:
+            raise ValueError('Twilio SMS configuration is not set up.')
+
+        for student in students:
+            results = StudentResult.objects.filter(student=student)
+            if not results.exists():
+                continue
+
+            message = f"Dear Parent/Guardian,\nResults for {student.admin.get_full_name()}:\n"
+            for result in results:
+                total_score = result.test + result.exam
+                grade = calculate_grade(total_score)
+                message += f"\n{result.subject.name}:\nTest: {result.test}\nExam: {result.exam}\nTotal: {total_score}\nGrade: {grade}\n"
+
+            phone_number = (student.phone_number or '').strip()
+            if not phone_number:
+                failure_count += 1
+                continue
+
+            if not phone_number.startswith('+'):
+                phone_number = '+234' + phone_number.lstrip('0')
+
+            sms = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+            sent_message = sms.messages.create(
+                body=message,
+                from_=settings.TWILIO_PHONE_NUMBER,
+                to=phone_number
+            )
+
+            SMSLog.objects.create(
+                student=student,
+                staff=staff,
+                message=message,
+                status=bool(sent_message.sid)
+            )
+            success_count += 1
+
+        if request.method == 'GET':
+            messages.success(request, f'Successfully sent {success_count} messages. Failed: {failure_count}')
+            return redirect('view_class_students')
+
+        return JsonResponse({
+            'status': True,
+            'message': f'Successfully sent {success_count} messages. Failed: {failure_count}'
+        })
+    except Exception as e:
+        if request.method == 'GET':
+            messages.error(request, str(e))
+            return redirect('view_class_students')
+        return JsonResponse({
+            'status': False,
+            'message': str(e)
+        })
 
 def view_individual_results(request):
     staff = get_object_or_404(Staff, admin=request.user)
