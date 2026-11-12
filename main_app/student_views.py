@@ -109,14 +109,18 @@ def student_apply_leave(request):
                 start_time = form.cleaned_data['start_time']
                 end_date = form.cleaned_data['end_date']
                 end_time = form.cleaned_data['end_time']
+                category = form.cleaned_data['leave_category']
+                reason = form.cleaned_data['message']
+
                 obj = LeaveReportStudent(
                     student=student,
+                    leave_category=category,
                     start_date=start_date,
                     start_time=start_time,
                     end_date=end_date,
                     end_time=end_time,
                     date=f"{start_date} {start_time} to {end_date} {end_time}",
-                    message=form.cleaned_data['message'],
+                    message=f"[{category.title()}] {reason}",
                     status=0,
                 )
                 obj.save()

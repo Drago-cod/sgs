@@ -198,6 +198,17 @@ class FeedbackStaffForm(FormSettings):
 
 
 class LeaveReportStudentForm(FormSettings):
+    leave_category = forms.ChoiceField(
+        choices=[
+            ('annual', 'Annual Leave'),
+            ('sick', 'Sick Leave'),
+            ('personal', 'Personal Leave'),
+            ('study', 'Study Leave'),
+            ('official', 'Official / Administrative Leave'),
+        ],
+        required=True,
+        label='Leave Category *'
+    )
     start_date = forms.DateField(
         required=True,
         label='Start Date *',
@@ -226,6 +237,7 @@ class LeaveReportStudentForm(FormSettings):
 
     def __init__(self, *args, **kwargs):
         super(LeaveReportStudentForm, self).__init__(*args, **kwargs)
+        self.fields['leave_category'].widget.attrs.update({'class': 'form-control'})
         self.fields['start_date'].widget.attrs.update({'class': 'form-control'})
         self.fields['start_time'].widget.attrs.update({'class': 'form-control'})
         self.fields['end_date'].widget.attrs.update({'class': 'form-control'})
@@ -247,7 +259,7 @@ class LeaveReportStudentForm(FormSettings):
 
     class Meta:
         model = LeaveReportStudent
-        fields = ['start_date', 'start_time', 'end_date', 'end_time', 'message']
+        fields = ['leave_category', 'start_date', 'start_time', 'end_date', 'end_time', 'message']
 
 
 class FeedbackStudentForm(FormSettings):

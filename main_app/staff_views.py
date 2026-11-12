@@ -223,6 +223,7 @@ def staff_apply_leave(request):
 
                 obj = LeaveReportStaff(
                     staff=staff,
+                    leave_category=category,
                     start_date=start_date,
                     start_time=start_time,
                     end_date=end_date,

@@ -182,7 +182,18 @@ class StudentAttendancePermission(models.Model):
 
 
 class LeaveReportStudent(models.Model):
+    LEAVE_CATEGORIES = (
+        ('sick', 'Sick Leave'),
+        ('personal', 'Personal Leave'),
+        ('study', 'Study Leave'),
+        ('annual', 'Annual Leave'),
+        ('official', 'Official / Administrative Leave'),
+    )
+
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    leave_category = models.CharField(
+        max_length=20, choices=LEAVE_CATEGORIES, default='personal')
+    forwarded_to_admin = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
     start_time = models.TimeField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)
@@ -195,7 +206,18 @@ class LeaveReportStudent(models.Model):
 
 
 class LeaveReportStaff(models.Model):
+    LEAVE_CATEGORIES = (
+        ('annual', 'Annual Leave'),
+        ('sick', 'Sick Leave'),
+        ('personal', 'Personal Leave'),
+        ('study', 'Study Leave'),
+        ('official', 'Official / Administrative Leave'),
+    )
+
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE)
+    leave_category = models.CharField(
+        max_length=20, choices=LEAVE_CATEGORIES, default='personal')
+    forwarded_to_admin = models.BooleanField(default=False)
     start_date = models.DateField(null=True, blank=True)
     start_time = models.TimeField(null=True, blank=True)
     end_date = models.DateField(null=True, blank=True)

@@ -20,6 +20,10 @@
                                 {{ form.non_field_errors }}
                             </div>
                             {% endif %}
+                            <div class="form-group">
+                                {{ form.leave_category.label_tag }}
+                                {{ form.leave_category }}
+                            </div>
                             <div class="row">
                                 <div class="col-md-6 form-group">
                                     {{ form.start_date.label_tag }}

@@ -30,6 +30,15 @@ def _build_admin_notifications(request):
             'link': reverse('view_staff_leave'),
         })
 
+    for leave in LeaveReportStudent.objects.filter(status=0, forwarded_to_admin=True).order_by('-created_at')[:5]:
+        notifications.append({
+            'category': 'Student Leave',
+            'title': 'Forwarded student leave request',
+            'message': f"{leave.student.admin.get_full_name()} submitted {leave.get_leave_category_display().lower()} leave and it was forwarded to the admin.",
+            'created_at': leave.created_at,
+            'link': reverse('view_student_leave'),
+        })
+
     for message in StudentMessage.objects.filter(receiver=request.user, is_read=False).order_by('-created_at')[:5]:
         notifications.append({
             'category': 'Message',
@@ -610,6 +619,12 @@ def view_student_leave(request):
 
         status = request.POST.get('status')
         leave.status = 1 if status == '1' else -1
+
+        if getattr(request.user, 'user_type', None) == '2' and status in ['1', '-1']:
+            leave.forwarded_to_admin = True
+            leave.save()
+            return HttpResponse(True)
+
         leave.save()
         return HttpResponse(True)
 
