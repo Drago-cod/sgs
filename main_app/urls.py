@@ -74,6 +74,7 @@ urlpatterns = [
     path("staff/manage/", hod_views.manage_staff, name='manage_staff'),
     path("staff/print/", hod_views.print_staff_list, name='print_staff_list'),
     path("student/manage/", hod_views.manage_student, name='manage_student'),
+    path("student/print/", hod_views.print_student_list, name='print_student_list'),
     path("course/manage/", hod_views.manage_course, name='manage_course'),
     path("subject/manage/", hod_views.manage_subject, name='manage_subject'),
     path("staff/edit/<int:staff_id>", hod_views.edit_staff, name='edit_staff'),

@@ -29,7 +29,7 @@
         <img src="{% static 'img/logo.jpeg' %}" alt="School logo">
         <div>
             <h1>Staff List</h1>
-            <p>Generated {{ now|date:"F j, Y" }}</p>
+            <p>Generated {% now "F j, Y" %}</p>
         </div>
     </header>
     <table>

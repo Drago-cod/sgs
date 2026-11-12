@@ -286,6 +286,19 @@ def manage_student(request):
     return render(request, "hod_template/manage_student.html", context)
 
 
+def print_student_list(request):
+    if getattr(request.user, 'user_type', None) != '1':
+        return HttpResponse("Forbidden", status=403)
+
+    students = Student.objects.select_related(
+        'admin', 'course', 'session'
+    ).order_by('admin__last_name', 'admin__first_name')
+    return render(request, "hod_template/print_student_list.html", {
+        'students': students,
+        'page_title': 'Registered Student List',
+    })
+
+
 def manage_course(request):
     courses = Course.objects.all()
     context = {
