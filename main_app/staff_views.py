@@ -550,6 +550,28 @@ def view_class_students(request):
     }
     return render(request, 'staff_template/view_class_students.html', context)
 
+
+def print_subject_student_lists(request):
+    staff = get_object_or_404(Staff, admin=request.user)
+    subjects = Subject.objects.filter(staff=staff).select_related(
+        'course').order_by('course__name', 'name')
+    subject_rosters = [
+        {
+            'subject': subject,
+            'students': Student.objects.filter(
+                course=subject.course
+            ).select_related('admin').order_by(
+                'admin__last_name', 'admin__first_name'),
+        }
+        for subject in subjects
+    ]
+    return render(request, 'staff_template/print_subject_student_lists.html', {
+        'subject_rosters': subject_rosters,
+        'staff': staff,
+        'page_title': 'Student Lists by Subject',
+    })
+
+
 @csrf_exempt
 def send_class_results_sms(request):
     staff = get_object_or_404(Staff, admin=request.user)

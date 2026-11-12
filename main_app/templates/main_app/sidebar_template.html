@@ -321,6 +321,13 @@
                         </p>
                     </a>
                 </li>
+                <li class="nav-item">
+                    {% url 'print_subject_student_lists' as print_subject_student_lists %}
+                    <a href="{{print_subject_student_lists}}" class="nav-link {% if print_subject_student_lists == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-print"></i>
+                        <p>Print Subject Student Lists</p>
+                    </a>
+                </li>
 
                 <li class="nav-header">COMMUNICATION</li>
                 <li class="nav-item">

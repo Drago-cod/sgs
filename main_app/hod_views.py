@@ -265,6 +265,18 @@ def manage_staff(request):
     return render(request, "hod_template/manage_staff.html", context)
 
 
+def print_staff_list(request):
+    if getattr(request.user, 'user_type', None) != '1':
+        return HttpResponse("Forbidden", status=403)
+
+    all_staff = Staff.objects.select_related('admin', 'course').order_by(
+        'admin__last_name', 'admin__first_name')
+    return render(request, "hod_template/print_staff_list.html", {
+        'all_staff': all_staff,
+        'page_title': 'Staff List',
+    })
+
+
 def manage_student(request):
     students = CustomUser.objects.filter(user_type=3)
     context = {

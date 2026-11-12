@@ -10,6 +10,9 @@
                 <a href="{% url 'class_teacher_dashboard' %}" class="btn btn-secondary mr-2">
                     <i class="fas fa-arrow-left mr-1"></i> Class Teacher Dashboard
                 </a>
+                <a href="{% url 'print_subject_student_lists' %}" class="btn btn-primary mr-2" target="_blank">
+                    <i class="fas fa-print mr-1"></i> Print Student Lists by Subject
+                </a>
                 <a href="{% url 'send_class_results_sms' %}" class="btn btn-danger" onclick="return confirm('Send results via SMS to all parents of this class?');">
                     <i class="fas fa-paper-plane mr-1"></i> Send Results to All Class Parents
                 </a>
