@@ -618,13 +618,14 @@ def view_student_leave(request):
             return HttpResponse(False)
 
         status = request.POST.get('status')
-        leave.status = 1 if status == '1' else -1
-
-        if getattr(request.user, 'user_type', None) == '2' and status in ['1', '-1']:
+        if status == 'forward':
+            leave.status = 0
             leave.forwarded_to_admin = True
             leave.save()
             return HttpResponse(True)
 
+        leave.status = 1 if status == '1' else -1
+        leave.forwarded_to_admin = False
         leave.save()
         return HttpResponse(True)
 
