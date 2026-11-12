@@ -1,0 +1,62 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}</title>
+    <style>
+        body { font: 14px Arial, sans-serif; color: #222; margin: 24px; }
+        header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        header img { width: 64px; height: 64px; object-fit: contain; }
+        h1 { margin: 0 0 4px; font-size: 22px; }
+        p { margin: 0; color: #555; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #777; padding: 8px; text-align: left; }
+        th { background: #eef3f8; }
+        .print-button { margin-bottom: 16px; padding: 8px 14px; cursor: pointer; }
+        @media print {
+            body { margin: 0; }
+            .print-button { display: none; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button" type="button" onclick="window.print()">Print</button>
+    <header>
+        <img src="{% static 'img/logo.jpeg' %}" alt="School logo">
+        <div>
+            <h1>Staff List</h1>
+            <p>Generated {{ now|date:"F j, Y" }}</p>
+        </div>
+    </header>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Staff Name</th>
+                <th>Email</th>
+                <th>Gender</th>
+                <th>Class</th>
+                <th>Class Teacher</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for staff in all_staff %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ staff.admin.get_full_name }}</td>
+                <td>{{ staff.admin.email }}</td>
+                <td>{{ staff.admin.gender|default:"-" }}</td>
+                <td>{{ staff.course.name|default:"-" }}</td>
+                <td>{% if staff.class_teacher %}Yes{% else %}No{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6">No staff are registered.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
