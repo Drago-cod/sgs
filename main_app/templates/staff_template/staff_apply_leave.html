@@ -4,6 +4,166 @@
 
 {% block content %}
 <style>
+    .staff-topbar {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        background: rgba(245, 247, 250, 0.96);
+        border: 1px solid #dfe5ec;
+        border-radius: 18px;
+        padding: 12px 18px;
+        margin: 0 0 22px;
+        box-shadow: 0 8px 20px rgba(20, 35, 54, 0.08);
+    }
+    .staff-topbar .brand-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+        flex: 1;
+    }
+    .brand-mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eff5ff, #dfeafc);
+        border: 1px solid #ccd9f2;
+        color: #2d6cdf;
+        font-size: 1.2rem;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+    .staff-topbar .page-heading {
+        margin: 0;
+        font-size: clamp(1.25rem, 1.6vw, 1.9rem);
+        line-height: 1.2;
+        color: #1f2d3d;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .topbar-search {
+        flex: 1 1 420px;
+        max-width: 540px;
+        display: flex;
+        align-items: center;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid #dfe4ea;
+        border-radius: 999px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+        overflow: hidden;
+        min-height: 48px;
+    }
+    .topbar-search input {
+        flex: 1;
+        border: 0;
+        background: transparent;
+        min-height: 48px;
+        padding: 0 18px;
+        font-size: 1.05rem;
+        color: #243444;
+    }
+    .topbar-search input:focus {
+        outline: none;
+    }
+    .topbar-search button {
+        width: 52px;
+        height: 48px;
+        border: 0;
+        background: #edf3ff;
+        color: #2d6cdf;
+        font-size: 1.1rem;
+        cursor: pointer;
+    }
+    .topbar-search button:hover {
+        background: #e3edff;
+    }
+    .topbar-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 18px;
+        flex-shrink: 0;
+    }
+    .lang-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid #dfe4ea;
+        border-radius: 12px;
+        padding: 8px 12px;
+        color: #233245;
+        font-weight: 600;
+    }
+    .lang-box i {
+        color: #5b6b7b;
+        font-size: 0.85rem;
+    }
+    .notification-box {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: rgba(255,255,255,0.9);
+        border: 1px solid #dfe4ea;
+        color: #34495e;
+        font-size: 1.1rem;
+    }
+    .notif-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        min-width: 20px;
+        height: 20px;
+        border-radius: 999px;
+        background: #ff5b64;
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.72rem;
+        font-weight: 800;
+        padding: 0 6px;
+        border: 2px solid #f5f7fa;
+    }
+    .user-box {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-left: 10px;
+        border-left: 1px solid #dfe4ea;
+    }
+    .user-avatar {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: linear-gradient(135deg, #8a6dff, #4ca4ff);
+        font-weight: 700;
+        border: 2px solid rgba(255,255,255,0.8);
+        box-shadow: 0 4px 10px rgba(82, 115, 244, 0.18);
+    }
+    .user-name {
+        font-weight: 700;
+        color: #1f2d3d;
+        display: block;
+        line-height: 1.2;
+    }
+    .user-role {
+        color: #5b6b7b;
+        font-size: 0.8rem;
+        display: block;
+    }
     .leave-application-shell {
         background: #f2f4f7;
         padding: 0;
@@ -172,6 +332,40 @@
     <div class="container-fluid">
         <div class="row">
             <div class="col-md-12">
+                <div class="staff-topbar" aria-label="Staff top bar">
+                    <div class="brand-wrap">
+                        <span class="brand-mark"><i class="fas fa-school"></i></span>
+                        <h2 class="page-heading">Welcome to Akhkor School Management System</h2>
+                    </div>
+
+                    <div class="topbar-search" aria-label="Search input">
+                        <input type="text" placeholder="Search Here ..." aria-label="Search Here" />
+                        <button type="button" aria-label="Search"><i class="fas fa-search"></i></button>
+                    </div>
+
+                    <div class="topbar-actions">
+                        <div class="lang-box" aria-label="Language selector">
+                            <span>English</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="notification-box" aria-label="Notifications">
+                            <i class="fas fa-bell"></i>
+                            <span class="notif-badge">5</span>
+                        </div>
+                        <div class="notification-box" aria-label="Messages">
+                            <i class="fas fa-envelope"></i>
+                            <span class="notif-badge">8</span>
+                        </div>
+                        <div class="user-box" aria-label="User profile">
+                            <div class="user-avatar">K</div>
+                            <div>
+                                <span class="user-name">Kazi Fahim</span>
+                                <span class="user-role">Admin</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="leave-header">
                     <div class="eyebrow">Communication / Apply for Leave</div>
                     <h1>Staff Leave Application</h1>
