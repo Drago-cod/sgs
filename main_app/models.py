@@ -362,6 +362,106 @@ class AttendanceAuditEvent(models.Model):
         ordering = ["created_at"]
 
 
+class TeacherAttendance(models.Model):
+    STATUS_CHOICES = (
+        ("PRESENT", "Present"),
+        ("LATE", "Late"),
+        ("ABSENT", "Absent"),
+        ("ON_LEAVE", "On Leave"),
+    )
+    SOURCE_CHOICES = (
+        ("SELF_CHECKIN", "Teacher Check-In"),
+        ("ADMIN", "Admin Recorded"),
+        ("AUTO_ACTIVITY", "Auto-Tracked (Class Attendance)"),
+    )
+
+    staff = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, related_name="attendance_records")
+    date = models.DateField()
+    status = models.CharField(
+        max_length=12, choices=STATUS_CHOICES, default="PRESENT")
+    check_in_time = models.TimeField(null=True, blank=True)
+    check_out_time = models.TimeField(null=True, blank=True)
+    source = models.CharField(
+        max_length=20, choices=SOURCE_CHOICES, default="SELF_CHECKIN")
+    notes = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-date", "staff__admin__last_name"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff", "date"],
+                name="unique_teacher_attendance_per_day",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.staff} - {self.date} ({self.get_status_display()})"
+
+
+class AIAttendanceNotification(models.Model):
+    TARGET_TYPES = (
+        ("STUDENT", "Student"),
+        ("TEACHER", "Teacher"),
+        ("SYSTEM", "School-Wide"),
+    )
+    SEVERITY_LEVELS = (
+        ("LOW", "Low"),
+        ("MEDIUM", "Medium"),
+        ("HIGH", "High"),
+        ("CRITICAL", "Critical"),
+    )
+    ALERT_TYPES = (
+        ("CHRONIC_ABSENCE", "Chronic Absence Risk"),
+        ("CONSECUTIVE_ABSENCE", "Consecutive Absences"),
+        ("CLASS_SKIP", "Potential Class Skip"),
+        ("TARDINESS_PATTERN", "Frequent Tardiness"),
+        ("ATTENDANCE_DROP", "Sudden Attendance Drop"),
+        ("TEACHER_ABSENT_UNEXCUSED", "Unexcused Teacher Absence"),
+        ("TEACHER_LATE_PATTERN", "Teacher Late Arrival Pattern"),
+        ("TEACHER_MISSED_LOGGING", "Teacher Missing Attendance Log"),
+        ("DAILY_SUMMARY", "AI Daily Attendance Digest"),
+    )
+
+    target_type = models.CharField(max_length=10, choices=TARGET_TYPES)
+    student = models.ForeignKey(
+        Student, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="ai_notifications")
+    staff = models.ForeignKey(
+        Staff, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="ai_notifications")
+    alert_type = models.CharField(max_length=30, choices=ALERT_TYPES)
+    severity = models.CharField(
+        max_length=10, choices=SEVERITY_LEVELS, default="MEDIUM")
+    risk_score = models.FloatField(default=0.0)
+    confidence = models.FloatField(default=0.85)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    recommendation = models.TextField(blank=True, default="")
+    metrics = models.JSONField(default=dict)
+    reference_date = models.DateField()
+    is_read = models.BooleanField(default=False)
+    is_resolved = models.BooleanField(default=False)
+    resolved_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="resolved_ai_notifications")
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["is_read", "is_resolved", "-created_at"]),
+            models.Index(fields=["target_type", "reference_date"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.severity}] {self.title} ({self.reference_date})"
+
+
 # Last additional model.
 class SMSLog(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE)
