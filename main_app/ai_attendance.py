@@ -38,6 +38,20 @@ CONSECUTIVE_ABSENCE_ALERT_MIN = 2
 TARDY_RATE_ALERT_THRESHOLD = 25.0
 
 
+def _coerce_date(value):
+    """Normalize a date, datetime, or ISO date string to a datetime.date."""
+    if value is None:
+        return timezone.localdate()
+    if isinstance(value, date_cls):
+        return value.date() if hasattr(value, "hour") else value
+    if isinstance(value, str):
+        try:
+            return date_cls.fromisoformat(value.strip())
+        except ValueError:
+            return timezone.localdate()
+    return timezone.localdate()
+
+
 def _normalize_report_status(report):
     """Return canonical status string for an AttendanceReport."""
     status = (report.attendance_status or "").upper()
@@ -157,7 +171,7 @@ def analyze_student_attendance(student, reference_date=None, create_alerts=True,
     Run AI behavioral & statistical analysis on a single student's attendance.
     Returns a detailed profile dict and optionally emits Admin notifications.
     """
-    ref_date = reference_date or timezone.localdate()
+    ref_date = _coerce_date(reference_date)
     reports = list(
         AttendanceReport.objects.filter(student=student)
         .select_related("attendance", "attendance__subject")
@@ -485,7 +499,7 @@ def analyze_teacher_attendance(staff, reference_date=None, create_alerts=True):
     Combines TeacherAttendance logs, approved LeaveReportStaff, and
     class attendance submission activity.
     """
-    ref_date = reference_date or timezone.localdate()
+    ref_date = _coerce_date(reference_date)
     staff_name = staff.admin.get_full_name().strip() or str(staff)
     course_name = staff.course.name if staff.course else "General"
     subjects = list(Subject.objects.filter(staff=staff))
@@ -731,7 +745,7 @@ def run_ai_attendance_scan(reference_date=None, actor=None, include_daily_summar
     Scan ALL students and ALL teachers, generate Admin AI notifications,
     and return a comprehensive summary payload.
     """
-    ref_date = reference_date or timezone.localdate()
+    ref_date = _coerce_date(reference_date)
 
     student_profiles = []
     teacher_profiles = []
@@ -831,7 +845,7 @@ def run_ai_attendance_scan(reference_date=None, actor=None, include_daily_summar
 
 def get_ai_dashboard_summary(reference_date=None):
     """Compute live non-mutating analytics for rendering the Admin AI Dashboard."""
-    ref_date = reference_date or timezone.localdate()
+    ref_date = _coerce_date(reference_date)
     student_profiles = [
         analyze_student_attendance(s, reference_date=ref_date, create_alerts=False)
         for s in Student.objects.select_related("admin", "course", "session").all()

@@ -14,12 +14,32 @@ from django.views.generic import UpdateView
 from .forms import *
 from .models import *
 from .attendance_audit import scan_attendance_date
-from django.utils.dateparse import parse_date
+from .ai_attendance import (
+    TEACHER_LATE_CUTOFF,
+    analyze_teacher_attendance,
+    get_ai_dashboard_summary,
+    run_ai_attendance_scan,
+)
+from django.utils.dateparse import parse_date, parse_time
 from django.utils import timezone
 
 
 def _build_admin_notifications(request):
     notifications = []
+
+    for ai_alert in AIAttendanceNotification.objects.filter(
+        is_resolved=False
+    ).order_by('-created_at')[:6]:
+        target_label = ai_alert.get_target_type_display()
+        notifications.append({
+            'category': f"AI Attendance ({target_label} · {ai_alert.severity})",
+            'title': ai_alert.title,
+            'message': ai_alert.message,
+            'created_at': ai_alert.created_at,
+            'link': reverse('admin_ai_attendance_dashboard'),
+            'severity': ai_alert.severity,
+            'is_unread': not ai_alert.is_read,
+        })
 
     for leave in LeaveReportStaff.objects.filter(status=0).order_by('-created_at')[:5]:
         notifications.append({
@@ -884,3 +904,175 @@ def delete_session(request, session_id):
         messages.error(
             request, "There are students assigned to this session. Please move them to another session.")
     return redirect(reverse('manage_session'))
+
+
+def admin_ai_attendance_dashboard(request):
+    """Admin AI Attendance Tracker for both students and teachers."""
+    date_param = request.GET.get('date', '').strip()
+    ref_date = parse_date(date_param) if date_param else timezone.localdate()
+    if not ref_date:
+        ref_date = timezone.localdate()
+
+    target_filter = request.GET.get('target', 'ALL').upper()
+    status_filter = request.GET.get('status', 'OPEN').upper()
+
+    notifications_qs = AIAttendanceNotification.objects.select_related(
+        'student__admin', 'student__course', 'staff__admin', 'staff__course', 'resolved_by'
+    )
+    if target_filter in ('STUDENT', 'TEACHER', 'SYSTEM'):
+        notifications_qs = notifications_qs.filter(target_type=target_filter)
+
+    if status_filter == 'UNREAD':
+        notifications_qs = notifications_qs.filter(is_read=False, is_resolved=False)
+    elif status_filter == 'RESOLVED':
+        notifications_qs = notifications_qs.filter(is_resolved=True)
+    elif status_filter == 'OPEN':
+        notifications_qs = notifications_qs.filter(is_resolved=False)
+
+    summary = get_ai_dashboard_summary(reference_date=ref_date)
+    all_staff = Staff.objects.select_related('admin', 'course').order_by('admin__last_name')
+    today_teacher_records = {
+        rec.staff_id: rec
+        for rec in TeacherAttendance.objects.filter(date=ref_date)
+    }
+    staff_attendance_rows = [
+        {
+            'staff': staff_member,
+            'record': today_teacher_records.get(staff_member.id),
+        }
+        for staff_member in all_staff
+    ]
+
+    context = {
+        'page_title': 'AI Attendance Tracker',
+        'reference_date': ref_date,
+        'target_filter': target_filter,
+        'status_filter': status_filter,
+        'ai_notifications': notifications_qs[:50],
+        'open_alert_count': AIAttendanceNotification.objects.filter(is_resolved=False).count(),
+        'unread_alert_count': AIAttendanceNotification.objects.filter(is_read=False, is_resolved=False).count(),
+        'critical_high_count': AIAttendanceNotification.objects.filter(
+            is_resolved=False, severity__in=['HIGH', 'CRITICAL']
+        ).count(),
+        'student_profiles': summary['student_profiles'],
+        'teacher_profiles': summary['teacher_profiles'],
+        'avg_student_rate': summary['avg_student_rate'],
+        'avg_teacher_rate': summary['avg_teacher_rate'],
+        'at_risk_students': summary['at_risk_students'],
+        'at_risk_teachers': summary['at_risk_teachers'],
+        'risk_distribution': summary['risk_distribution'],
+        'staff_attendance_rows': staff_attendance_rows,
+        'late_cutoff': TEACHER_LATE_CUTOFF.strftime('%H:%M'),
+    }
+    return render(request, 'hod_template/ai_attendance_dashboard.html', context)
+
+
+@require_POST
+def run_ai_attendance_scan_view(request):
+    """Trigger a full AI attendance scan across all students and teachers."""
+    date_str = request.POST.get('date', '').strip()
+    ref_date = parse_date(date_str) if date_str else timezone.localdate()
+    if not ref_date:
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'error': 'Invalid date format.'}, status=400)
+        messages.error(request, 'Invalid date selected for AI scan.')
+        return redirect('admin_ai_attendance_dashboard')
+
+    scan_result = run_ai_attendance_scan(
+        reference_date=ref_date,
+        actor=request.user,
+        include_daily_summary=True,
+    )
+    msg = (
+        f"AI scan completed for {ref_date}: scanned {scan_result['students_scanned']} students "
+        f"({scan_result['at_risk_students']} at risk) and {scan_result['teachers_scanned']} teachers "
+        f"({scan_result['at_risk_teachers']} flagged). {scan_result['new_alerts']} new admin alert(s) generated."
+    )
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'message': msg,
+            'students_scanned': scan_result['students_scanned'],
+            'teachers_scanned': scan_result['teachers_scanned'],
+            'at_risk_students': scan_result['at_risk_students'],
+            'at_risk_teachers': scan_result['at_risk_teachers'],
+            'new_alerts': scan_result['new_alerts'],
+        })
+    messages.success(request, msg)
+    return redirect(f"{reverse('admin_ai_attendance_dashboard')}?date={ref_date.isoformat()}")
+
+
+@require_POST
+def record_teacher_attendance(request):
+    """Admin records or updates daily attendance for a teacher and triggers AI analysis."""
+    staff_id = request.POST.get('staff_id')
+    date_str = request.POST.get('date', '').strip()
+    status = request.POST.get('status', 'PRESENT').upper()
+    checkin_str = request.POST.get('check_in_time', '').strip()
+    notes = request.POST.get('notes', '').strip()
+
+    valid_statuses = {choice[0] for choice in TeacherAttendance.STATUS_CHOICES}
+    if status not in valid_statuses:
+        messages.error(request, "Invalid teacher attendance status.")
+        return redirect('admin_ai_attendance_dashboard')
+
+    att_date = parse_date(date_str) if date_str else timezone.localdate()
+    if not att_date:
+        messages.error(request, "Please provide a valid date.")
+        return redirect('admin_ai_attendance_dashboard')
+
+    staff = get_object_or_404(Staff, id=staff_id)
+    checkin_time = parse_time(checkin_str) if checkin_str else None
+    if status == 'PRESENT' and checkin_time and checkin_time > TEACHER_LATE_CUTOFF:
+        status = 'LATE'
+
+    TeacherAttendance.objects.update_or_create(
+        staff=staff,
+        date=att_date,
+        defaults={
+            'status': status,
+            'check_in_time': checkin_time,
+            'source': 'ADMIN',
+            'notes': notes,
+        },
+    )
+    profile = analyze_teacher_attendance(staff, reference_date=att_date, create_alerts=True)
+    alert_note = (
+        f" AI generated {len(profile['alerts_created'])} admin alert(s)."
+        if profile['alerts_created'] else ""
+    )
+    messages.success(
+        request,
+        f"Saved attendance for {staff.admin.get_full_name()} on {att_date} ({status}).{alert_note}",
+    )
+    return redirect(f"{reverse('admin_ai_attendance_dashboard')}?date={att_date.isoformat()}")
+
+
+@require_POST
+def mark_ai_notification_read(request, notification_id):
+    notification = get_object_or_404(AIAttendanceNotification, id=notification_id)
+    notification.is_read = True
+    notification.save(update_fields=['is_read', 'updated_at'])
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'ok'})
+    return redirect(request.META.get('HTTP_REFERER') or reverse('admin_ai_attendance_dashboard'))
+
+
+@require_POST
+def resolve_ai_notification(request, notification_id):
+    notification = get_object_or_404(AIAttendanceNotification, id=notification_id)
+    notification.is_read = True
+    notification.is_resolved = True
+    notification.resolved_by = request.user
+    notification.resolved_at = timezone.now()
+    notification.save(update_fields=['is_read', 'is_resolved', 'resolved_by', 'resolved_at', 'updated_at'])
+    messages.success(request, f"Resolved AI alert: {notification.title}")
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'status': 'ok'})
+    return redirect(request.META.get('HTTP_REFERER') or reverse('admin_ai_attendance_dashboard'))
+
+
+@require_POST
+def mark_all_ai_notifications_read(request):
+    AIAttendanceNotification.objects.filter(is_read=False).update(is_read=True)
+    messages.success(request, "All AI attendance notifications marked as read.")
+    return redirect(request.META.get('HTTP_REFERER') or reverse('admin_ai_attendance_dashboard'))

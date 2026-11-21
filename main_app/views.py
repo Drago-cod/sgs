@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render, reverse
 from django.views.decorators.csrf import csrf_exempt
 
 from .EmailBackend import EmailBackend
+from .middleware import get_user_home_url
 from .models import (
     Attendance,
     AttendanceAnomaly,
@@ -24,12 +25,7 @@ from django.utils.dateparse import parse_date
 
 def login_page(request):
     if request.user.is_authenticated:
-        if request.user.user_type == '1':
-            return redirect(reverse("admin_home"))
-        elif request.user.user_type == '2':
-            return redirect(reverse("staff_home"))
-        else:
-            return redirect(reverse("student_home"))
+        return redirect(get_user_home_url(request.user))
     return render(request, 'main_app/login.html')
 
 
@@ -41,12 +37,7 @@ def doLogin(request, **kwargs):
         user = EmailBackend.authenticate(request, username=request.POST.get('email'), password=request.POST.get('password'))
         if user != None:
             login(request, user)
-            if user.user_type == '1':
-                return redirect(reverse("admin_home"))
-            elif user.user_type == '2':
-                return redirect(reverse("staff_home"))
-            else:
-                return redirect(reverse("student_home"))
+            return redirect(get_user_home_url(user))
         else:
             messages.error(request, "Invalid details")
             return redirect("/")

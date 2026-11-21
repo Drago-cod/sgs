@@ -1,0 +1,515 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    .ai-hero {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 55%, #17a2b8 100%);
+        border-radius: 14px;
+        padding: 24px 28px;
+        color: #fff;
+        margin-bottom: 24px;
+        box-shadow: 0 6px 20px rgba(30, 58, 95, 0.25);
+    }
+    .ai-hero h2 {
+        font-weight: 700;
+        font-size: 1.5rem;
+        margin-bottom: 6px;
+    }
+    .ai-hero p {
+        margin-bottom: 0;
+        opacity: 0.9;
+        font-size: 0.94rem;
+    }
+    .stat-card {
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: all 0.25s ease;
+        position: relative;
+        min-height: 128px;
+        color: #fff;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
+    }
+    .stat-card .stat-body {
+        padding: 18px 22px;
+        position: relative;
+        z-index: 2;
+    }
+    .stat-card .stat-body h3 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+    .stat-card .stat-body p {
+        font-size: 0.9rem;
+        opacity: 0.92;
+        margin-bottom: 4px;
+        font-weight: 500;
+    }
+    .stat-card .stat-sub {
+        font-size: 0.78rem;
+        opacity: 0.85;
+    }
+    .stat-card .stat-icon {
+        position: absolute;
+        right: 18px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 3.1rem;
+        opacity: 0.2;
+        z-index: 1;
+    }
+    .bg-grad-navy { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); }
+    .bg-grad-teal { background: linear-gradient(135deg, #17a2b8 0%, #28a745 100%); }
+    .bg-grad-amber { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); }
+    .bg-grad-red { background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%); }
+
+    .alert-feed-item {
+        border-left: 5px solid #17a2b8;
+        padding: 16px 20px;
+        border-bottom: 1px solid #eef1f5;
+        transition: background 0.2s ease;
+    }
+    .alert-feed-item:last-child { border-bottom: none; }
+    .alert-feed-item:hover { background: #f8fafc; }
+    .alert-feed-item.unread { background: #f0f9ff; }
+    .alert-feed-item.sev-CRITICAL { border-left-color: #dc3545; }
+    .alert-feed-item.sev-HIGH { border-left-color: #fd7e14; }
+    .alert-feed-item.sev-MEDIUM { border-left-color: #ffc107; }
+    .alert-feed-item.sev-LOW { border-left-color: #28a745; }
+
+    .recommendation-box {
+        background: #f4f7fb;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 0.85rem;
+        color: #2c5282;
+        margin-top: 8px;
+    }
+    .risk-bar-wrap {
+        min-width: 110px;
+    }
+    .risk-bar-wrap .progress {
+        height: 8px;
+        border-radius: 6px;
+        background: #e9ecef;
+    }
+    .filter-pill {
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .grad-header-navy {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
+        color: #fff;
+    }
+    .grad-header-teal {
+        background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+        color: #fff;
+    }
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <!-- Hero Banner & Scan Controls -->
+        <div class="ai-hero d-flex flex-wrap justify-content-between align-items-center">
+            <div class="mb-2 mb-md-0">
+                <h2><i class="fas fa-robot mr-2"></i> AI Attendance Tracking &amp; Admin Alerts</h2>
+                <p>Automated risk scoring, absence pattern detection, class-skip alerts, and teacher punctuality tracking.</p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center" style="gap: 10px;">
+                <form method="post" action="{% url 'run_ai_attendance_scan' %}" class="form-inline">
+                    {% csrf_token %}
+                    <input type="date" name="date" value="{{ reference_date|date:'Y-m-d' }}"
+                           class="form-control form-control-sm mr-2" required>
+                    <button type="submit" class="btn btn-warning btn-sm font-weight-bold text-dark">
+                        <i class="fas fa-bolt mr-1"></i> Run AI Scan Now
+                    </button>
+                </form>
+                {% if unread_alert_count > 0 %}
+                <form method="post" action="{% url 'mark_all_ai_notifications_read' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-check-double mr-1"></i> Mark All Read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="stat-card bg-grad-navy">
+                    <div class="stat-body">
+                        <h3>{{ avg_student_rate }}%</h3>
+                        <p>Student Attendance Rate</p>
+                        <div class="stat-sub">{{ student_profiles|length }} tracked &middot; {{ at_risk_students }} at risk</div>
+                    </div>
+                    <i class="fas fa-user-graduate stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="stat-card bg-grad-teal">
+                    <div class="stat-body">
+                        <h3>{{ avg_teacher_rate }}%</h3>
+                        <p>Teacher Attendance Rate</p>
+                        <div class="stat-sub">{{ teacher_profiles|length }} tracked &middot; {{ at_risk_teachers }} flagged</div>
+                    </div>
+                    <i class="fas fa-chalkboard-teacher stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="stat-card bg-grad-amber">
+                    <div class="stat-body">
+                        <h3>{{ unread_alert_count }}</h3>
+                        <p>Unread AI Notifications</p>
+                        <div class="stat-sub">{{ open_alert_count }} open alerts total</div>
+                    </div>
+                    <i class="fas fa-bell stat-icon"></i>
+                </div>
+            </div>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="stat-card bg-grad-red">
+                    <div class="stat-body">
+                        <h3>{{ critical_high_count }}</h3>
+                        <p>High / Critical Alerts</p>
+                        <div class="stat-sub">Date: {{ reference_date|date:"M d, Y" }}</div>
+                    </div>
+                    <i class="fas fa-exclamation-triangle stat-icon"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Notifications Feed + Analytics Chart -->
+        <div class="row mb-4">
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-header grad-header-navy d-flex flex-wrap justify-content-between align-items-center">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-bell mr-2"></i> AI Attendance Notifications
+                        </h3>
+                        <div class="d-flex flex-wrap" style="gap: 6px;">
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target=ALL&status={{ status_filter }}"
+                               class="btn btn-xs filter-pill {% if target_filter == 'ALL' %}btn-light text-dark{% else %}btn-outline-light{% endif %}">All</a>
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target=STUDENT&status={{ status_filter }}"
+                               class="btn btn-xs filter-pill {% if target_filter == 'STUDENT' %}btn-light text-dark{% else %}btn-outline-light{% endif %}">Students</a>
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target=TEACHER&status={{ status_filter }}"
+                               class="btn btn-xs filter-pill {% if target_filter == 'TEACHER' %}btn-light text-dark{% else %}btn-outline-light{% endif %}">Teachers</a>
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target={{ target_filter }}&status=OPEN"
+                               class="btn btn-xs filter-pill {% if status_filter == 'OPEN' %}btn-info{% else %}btn-outline-light{% endif %}">Open</a>
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target={{ target_filter }}&status=UNREAD"
+                               class="btn btn-xs filter-pill {% if status_filter == 'UNREAD' %}btn-warning text-dark{% else %}btn-outline-light{% endif %}">Unread</a>
+                            <a href="?date={{ reference_date|date:'Y-m-d' }}&target={{ target_filter }}&status=RESOLVED"
+                               class="btn btn-xs filter-pill {% if status_filter == 'RESOLVED' %}btn-success{% else %}btn-outline-light{% endif %}">Resolved</a>
+                        </div>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 540px; overflow-y: auto;">
+                        {% for alert in ai_notifications %}
+                        <div class="alert-feed-item sev-{{ alert.severity }} {% if not alert.is_read and not alert.is_resolved %}unread{% endif %}">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start mb-1">
+                                <div>
+                                    <span class="badge {% if alert.severity == 'CRITICAL' %}badge-danger{% elif alert.severity == 'HIGH' %}badge-warning text-dark{% elif alert.severity == 'MEDIUM' %}badge-info{% else %}badge-success{% endif %} mr-1">
+                                        {{ alert.severity }}
+                                    </span>
+                                    <span class="badge {% if alert.target_type == 'STUDENT' %}badge-primary{% elif alert.target_type == 'TEACHER' %}badge-dark{% else %}badge-secondary{% endif %} mr-1">
+                                        <i class="fas {% if alert.target_type == 'STUDENT' %}fa-user-graduate{% elif alert.target_type == 'TEACHER' %}fa-chalkboard-teacher{% else %}fa-school{% endif %} mr-1"></i>
+                                        {{ alert.get_target_type_display }}
+                                    </span>
+                                    {% if not alert.is_read and not alert.is_resolved %}
+                                    <span class="badge badge-pill badge-info">NEW</span>
+                                    {% endif %}
+                                    {% if alert.is_resolved %}
+                                    <span class="badge badge-pill badge-success">RESOLVED</span>
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">
+                                    Risk: <strong>{{ alert.risk_score|floatformat:0 }}/100</strong> &middot;
+                                    {{ alert.reference_date|date:"M d, Y" }}
+                                </small>
+                            </div>
+                            <h6 class="font-weight-bold mb-1 text-dark">{{ alert.title }}</h6>
+                            <p class="mb-1 text-secondary" style="font-size: 0.92rem;">{{ alert.message }}</p>
+                            {% if alert.recommendation %}
+                            <div class="recommendation-box">
+                                <i class="fas fa-lightbulb text-warning mr-1"></i>
+                                <strong>AI Recommendation:</strong> {{ alert.recommendation }}
+                            </div>
+                            {% endif %}
+                            {% if not alert.is_resolved %}
+                            <div class="mt-2 d-flex" style="gap: 8px;">
+                                {% if not alert.is_read %}
+                                <form method="post" action="{% url 'mark_ai_notification_read' alert.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-xs btn-outline-primary">
+                                        <i class="fas fa-eye mr-1"></i> Mark Read
+                                    </button>
+                                </form>
+                                {% endif %}
+                                <form method="post" action="{% url 'resolve_ai_notification' alert.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-xs btn-success">
+                                        <i class="fas fa-check mr-1"></i> Resolve Alert
+                                    </button>
+                                </form>
+                            </div>
+                            {% else %}
+                            <small class="text-muted d-block mt-2">
+                                Resolved by {{ alert.resolved_by.get_full_name|default:"Admin" }} on {{ alert.resolved_at|date:"M d, Y H:i" }}
+                            </small>
+                            {% endif %}
+                        </div>
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
+                            <p class="mb-1 font-weight-bold">No matching AI alerts right now.</p>
+                            <small>Click <strong>Run AI Scan Now</strong> above to analyze current student and teacher attendance.</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Risk Chart & Quick Teacher Attendance Recording -->
+            <div class="col-lg-4 mb-3">
+                <div class="card mb-3">
+                    <div class="card-header grad-header-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-chart-doughnut mr-2"></i> Risk Distribution</h3>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="aiRiskChart" style="height: 200px; max-height: 200px;"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header grad-header-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-user-clock mr-2"></i> Log Teacher Attendance</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="{% url 'record_teacher_attendance' %}">
+                            {% csrf_token %}
+                            <div class="form-group mb-2">
+                                <label class="small font-weight-bold mb-1">Teacher</label>
+                                <select name="staff_id" class="form-control form-control-sm" required>
+                                    <option value="">Select Teacher</option>
+                                    {% for row in staff_attendance_rows %}
+                                    <option value="{{ row.staff.id }}">
+                                        {{ row.staff.admin.get_full_name }} ({{ row.staff.course.name|default:"General" }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group col-6 mb-2">
+                                    <label class="small font-weight-bold mb-1">Date</label>
+                                    <input type="date" name="date" value="{{ reference_date|date:'Y-m-d' }}"
+                                           class="form-control form-control-sm" required>
+                                </div>
+                                <div class="form-group col-6 mb-2">
+                                    <label class="small font-weight-bold mb-1">Status</label>
+                                    <select name="status" class="form-control form-control-sm" required>
+                                        <option value="PRESENT">Present</option>
+                                        <option value="LATE">Late</option>
+                                        <option value="ABSENT">Absent</option>
+                                        <option value="ON_LEAVE">On Leave</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group mb-2">
+                                <label class="small font-weight-bold mb-1">Check-In Time <small class="text-muted">(Late after {{ late_cutoff }})</small></label>
+                                <input type="time" name="check_in_time" class="form-control form-control-sm">
+                            </div>
+                            <div class="form-group mb-3">
+                                <label class="small font-weight-bold mb-1">Notes</label>
+                                <input type="text" name="notes" class="form-control form-control-sm" placeholder="Optional note">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm btn-block">
+                                <i class="fas fa-save mr-1"></i> Save &amp; Run AI Check
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Student AI Risk Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header grad-header-navy d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-user-graduate mr-2"></i> Student AI Attendance Profiles</h3>
+                        <a href="{% url 'admin_attendance_audit' %}" class="btn btn-xs btn-outline-light">
+                            <i class="fas fa-search mr-1"></i> Period Skip Audit Log
+                        </a>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Class</th>
+                                    <th>Attendance</th>
+                                    <th>Streak</th>
+                                    <th>Trend</th>
+                                    <th>AI Risk Score</th>
+                                    <th>AI Insight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in student_profiles %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ p.name }}</td>
+                                    <td>{{ p.course }}</td>
+                                    <td>
+                                        <strong>{{ p.attendance_rate }}%</strong>
+                                        <small class="text-muted d-block">{{ p.present_count }}P / {{ p.absent_count }}A / {{ p.tardy_count }}T</small>
+                                    </td>
+                                    <td>
+                                        {% if p.consecutive_absences >= 2 %}
+                                        <span class="badge badge-danger">{{ p.consecutive_absences }} absent</span>
+                                        {% elif p.consecutive_absences == 1 %}
+                                        <span class="badge badge-warning text-dark">1 absent</span>
+                                        {% else %}
+                                        <span class="badge badge-success">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if p.trend_label == 'Declining' %}
+                                        <span class="text-danger font-weight-bold"><i class="fas fa-arrow-down mr-1"></i>{{ p.trend_delta }}%</span>
+                                        {% elif p.trend_label == 'Improving' %}
+                                        <span class="text-success font-weight-bold"><i class="fas fa-arrow-up mr-1"></i>+{{ p.trend_delta }}%</span>
+                                        {% else %}
+                                        <span class="text-muted">{{ p.trend_label }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="risk-bar-wrap">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="font-weight-bold">{{ p.risk_score }}/100</span>
+                                            <span class="badge {% if p.risk_level == 'CRITICAL' %}badge-danger{% elif p.risk_level == 'HIGH' %}badge-warning text-dark{% elif p.risk_level == 'MEDIUM' %}badge-info{% else %}badge-success{% endif %}">{{ p.risk_level }}</span>
+                                        </div>
+                                        <div class="progress">
+                                            <div class="progress-bar {% if p.risk_level == 'CRITICAL' %}bg-danger{% elif p.risk_level == 'HIGH' %}bg-warning{% elif p.risk_level == 'MEDIUM' %}bg-info{% else %}bg-success{% endif %}"
+                                                 style="width: {{ p.risk_score }}%"></div>
+                                        </div>
+                                    </td>
+                                    <td style="max-width: 320px; font-size: 0.88rem;">{{ p.insight }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="7" class="text-center py-4 text-muted">No students registered yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Teacher AI Risk & Punctuality Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header grad-header-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-chalkboard-teacher mr-2"></i> Teacher Attendance &amp; Punctuality Profiles</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Class / Subjects</th>
+                                    <th>Status ({{ reference_date|date:"M d" }})</th>
+                                    <th>Attendance Rate</th>
+                                    <th>Punctuality</th>
+                                    <th>Class Logs (14d)</th>
+                                    <th>AI Risk Score</th>
+                                    <th>AI Insight</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for t in teacher_profiles %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ t.name }}</td>
+                                    <td>
+                                        {{ t.course }}
+                                        {% if t.subjects %}
+                                        <small class="text-muted d-block">{{ t.subjects|join:", " }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if t.today_status == 'Present' %}badge-success{% elif t.today_status == 'Late' %}badge-warning text-dark{% elif t.today_status == 'Absent' %}badge-danger{% elif t.today_status == 'On Leave' %}badge-info{% else %}badge-secondary{% endif %}">
+                                            {{ t.today_status }}
+                                        </span>
+                                        {% if t.today_checkin %}
+                                        <small class="text-muted d-block">{{ t.today_checkin|time:"H:i" }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>{{ t.attendance_rate }}%</strong>
+                                        <small class="text-muted d-block">{{ t.present_count }}P / {{ t.late_count }}L / {{ t.absent_count }}A</small>
+                                    </td>
+                                    <td>{{ t.punctuality_rate }}%</td>
+                                    <td>{{ t.classes_logged_recent }}</td>
+                                    <td class="risk-bar-wrap">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="font-weight-bold">{{ t.risk_score }}/100</span>
+                                            <span class="badge {% if t.risk_level == 'CRITICAL' %}badge-danger{% elif t.risk_level == 'HIGH' %}badge-warning text-dark{% elif t.risk_level == 'MEDIUM' %}badge-info{% else %}badge-success{% endif %}">{{ t.risk_level }}</span>
+                                        </div>
+                                        <div class="progress">
+                                            <div class="progress-bar {% if t.risk_level == 'CRITICAL' %}bg-danger{% elif t.risk_level == 'HIGH' %}bg-warning{% elif t.risk_level == 'MEDIUM' %}bg-info{% else %}bg-success{% endif %}"
+                                                 style="width: {{ t.risk_score }}%"></div>
+                                        </div>
+                                    </td>
+                                    <td style="max-width: 300px; font-size: 0.88rem;">{{ t.insight }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="8" class="text-center py-4 text-muted">No teachers registered yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(document).ready(function() {
+    var ctx = document.getElementById('aiRiskChart');
+    if (ctx) {
+        new Chart(ctx.getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Low Risk', 'Medium Risk', 'High Risk', 'Critical Risk'],
+                datasets: [{
+                    data: [
+                        {{ risk_distribution.LOW }},
+                        {{ risk_distribution.MEDIUM }},
+                        {{ risk_distribution.HIGH }},
+                        {{ risk_distribution.CRITICAL }}
+                    ],
+                    backgroundColor: ['#28a745', '#17a2b8', '#fd7e14', '#dc3545'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                responsive: true,
+                legend: { position: 'bottom' }
+            }
+        });
+    }
+});
+</script>
+{% endblock custom_js %}

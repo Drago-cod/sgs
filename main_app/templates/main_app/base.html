@@ -254,6 +254,42 @@
             <a class="nav-link" data-widget="pushmenu" href="#" style="color: #fff;"><i class="fas fa-bars"></i></a>
           </li>
         </ul>
+        {% if request.user.is_authenticated and request.user.user_type == '1' %}
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link" data-toggle="dropdown" href="#" title="AI Attendance Alerts" style="color: #fff;">
+              <i class="fas fa-robot mr-1"></i>
+              <i class="far fa-bell"></i>
+              {% if ai_unread_count %}
+              <span class="badge badge-danger navbar-badge">{{ ai_unread_count }}</span>
+              {% endif %}
+            </a>
+            <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right" style="min-width: 320px;">
+              <span class="dropdown-item dropdown-header font-weight-bold">
+                {{ ai_unread_count }} Unread AI Attendance Alert{{ ai_unread_count|pluralize }}
+              </span>
+              <div class="dropdown-divider"></div>
+              {% for alert in ai_recent_alerts %}
+              <a href="{% url 'admin_ai_attendance_dashboard' %}" class="dropdown-item" style="white-space: normal;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="badge {% if alert.severity == 'CRITICAL' %}badge-danger{% elif alert.severity == 'HIGH' %}badge-warning text-dark{% elif alert.severity == 'MEDIUM' %}badge-info{% else %}badge-success{% endif %}">{{ alert.severity }}</span>
+                  <small class="text-muted">{{ alert.reference_date|date:"M d" }}</small>
+                </div>
+                <div class="font-weight-bold small mt-1">{{ alert.title }}</div>
+                <div class="text-muted small">{{ alert.message|truncatechars:90 }}</div>
+              </a>
+              <div class="dropdown-divider"></div>
+              {% empty %}
+              <span class="dropdown-item text-muted text-center small">No unread AI attendance alerts</span>
+              <div class="dropdown-divider"></div>
+              {% endfor %}
+              <a href="{% url 'admin_ai_attendance_dashboard' %}" class="dropdown-item dropdown-footer font-weight-bold text-primary">
+                Open AI Attendance Tracker
+              </a>
+            </div>
+          </li>
+        </ul>
+        {% endif %}
       </nav>
       {% include "main_app/sidebar_template.html" with user=user %}
       <div class="content-wrapper">
@@ -281,6 +317,10 @@
                   {% for message in messages %}
                   {% if message.tags == 'success' %}
                   <div class="alert alert-success">{{message}}</div>
+                  {% elif message.tags == 'warning' %}
+                  <div class="alert alert-warning">{{message}}</div>
+                  {% elif message.tags == 'info' %}
+                  <div class="alert alert-info">{{message}}</div>
                   {% else %}
                   <div class="alert alert-danger">{{message}}</div>
                   {% endif %}

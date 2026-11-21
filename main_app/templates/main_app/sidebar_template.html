@@ -184,6 +184,18 @@
 
                 <li class="nav-header">ATTENDANCE & FEEDBACK</li>
                 <li class="nav-item">
+                    {% url 'admin_ai_attendance_dashboard' as admin_ai_attendance_dashboard %}
+                    <a href="{{admin_ai_attendance_dashboard}}" class="nav-link {% if admin_ai_attendance_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-robot"></i>
+                        <p>
+                            AI Attendance Tracker
+                            {% if ai_unread_count %}
+                            <span class="badge badge-danger right">{{ ai_unread_count }}</span>
+                            {% endif %}
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {% url 'admin_view_attendance' as admin_view_attendance %}
                     <a href="{{admin_view_attendance}}" class="nav-link  {% if admin_view_attendance == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-clipboard-check"></i>
@@ -303,6 +315,15 @@
                 </li>
 
                 <li class="nav-header">ATTENDANCE</li>
+                <li class="nav-item">
+                    {% url 'staff_attendance_checkin' as staff_attendance_checkin %}
+                    <a href="{{staff_attendance_checkin}}" class="nav-link {% if staff_attendance_checkin == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-clock"></i>
+                        <p>
+                            My Attendance Check-In
+                        </p>
+                    </a>
+                </li>
                 <li class="nav-item">
                     {% url 'staff_take_attendance' as staff_take_attendance %}
                     <a href="{{staff_take_attendance}}" class="nav-link {% if staff_take_attendance == request.path %} active {% endif %}">

@@ -1,0 +1,125 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0">
+                            <i class="fas fa-user-clock mr-2"></i> Today's Attendance ({{ today|date:"l, M d, Y" }})
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted small mb-3">
+                            Check-in cutoff for on-time arrival is <strong>{{ late_cutoff }}</strong>.
+                            AI attendance tracking automatically notifies administration of late arrivals or unexcused absences.
+                        </p>
+                        {% if today_record %}
+                        <div class="alert {% if today_record.status == 'PRESENT' %}alert-success{% elif today_record.status == 'LATE' %}alert-warning{% else %}alert-info{% endif %}">
+                            <strong>Status:</strong> {{ today_record.get_status_display }}<br>
+                            {% if today_record.check_in_time %}
+                            <strong>Check-In:</strong> {{ today_record.check_in_time|time:"H:i:s" }}<br>
+                            {% endif %}
+                            {% if today_record.check_out_time %}
+                            <strong>Check-Out:</strong> {{ today_record.check_out_time|time:"H:i:s" }}
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <form method="post">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="checkin-notes">Optional Note</label>
+                                <input id="checkin-notes" type="text" name="notes" class="form-control"
+                                       placeholder="e.g., On campus for morning assembly">
+                            </div>
+                            <div class="d-flex" style="gap: 10px;">
+                                {% if not today_record or not today_record.check_in_time %}
+                                <button type="submit" name="action" value="checkin" class="btn btn-success flex-fill">
+                                    <i class="fas fa-sign-in-alt mr-1"></i> Check In Now
+                                </button>
+                                {% endif %}
+                                {% if today_record and not today_record.check_out_time %}
+                                <button type="submit" name="action" value="checkout" class="btn btn-primary flex-fill">
+                                    <i class="fas fa-sign-out-alt mr-1"></i> Check Out Now
+                                </button>
+                                {% endif %}
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-chart-line mr-2"></i> My AI Attendance Summary</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-4">
+                                <h3 class="font-weight-bold text-primary mb-0">{{ profile.attendance_rate }}%</h3>
+                                <small class="text-muted">Attendance</small>
+                            </div>
+                            <div class="col-4">
+                                <h3 class="font-weight-bold text-success mb-0">{{ profile.punctuality_rate }}%</h3>
+                                <small class="text-muted">Punctuality</small>
+                            </div>
+                            <div class="col-4">
+                                <h3 class="font-weight-bold text-info mb-0">{{ profile.classes_logged_recent }}</h3>
+                                <small class="text-muted">Class Logs (14d)</small>
+                            </div>
+                        </div>
+                        <div class="p-3 rounded" style="background: #f4f6f9;">
+                            <strong><i class="fas fa-robot mr-1 text-info"></i> AI Status:</strong>
+                            {{ profile.insight }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-gradient-navy">
+                <h3 class="card-title mb-0"><i class="fas fa-history mr-2"></i> Recent Attendance History</h3>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Check-In</th>
+                            <th>Check-Out</th>
+                            <th>Source</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rec in history %}
+                        <tr>
+                            <td>{{ rec.date|date:"M d, Y" }}</td>
+                            <td>
+                                <span class="badge {% if rec.status == 'PRESENT' %}badge-success{% elif rec.status == 'LATE' %}badge-warning text-dark{% elif rec.status == 'ABSENT' %}badge-danger{% else %}badge-info{% endif %}">
+                                    {{ rec.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ rec.check_in_time|time:"H:i"|default:"—" }}</td>
+                            <td>{{ rec.check_out_time|time:"H:i"|default:"—" }}</td>
+                            <td>{{ rec.get_source_display }}</td>
+                            <td>{{ rec.notes|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center py-4 text-muted">No attendance records yet. Click "Check In Now" to log today's attendance.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

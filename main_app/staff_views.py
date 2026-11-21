@@ -11,7 +11,14 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .forms import *
 from .models import *
+from .ai_attendance import (
+    TEACHER_LATE_CUTOFF,
+    analyze_student_attendance,
+    analyze_teacher_attendance,
+    auto_record_teacher_activity,
+)
 from django.db.models import Q
+from django.utils import timezone
 
 #My additional imports
 #import vonage
@@ -51,6 +58,9 @@ def staff_home(request):
         attendance_count = Attendance.objects.filter(subject=subject).count()
         subject_list.append(subject.name)
         attendance_list.append(attendance_count)
+    today_teacher_attendance = TeacherAttendance.objects.filter(
+        staff=staff, date=timezone.localdate()
+    ).first()
     context = {
         'page_title': 'Staff Panel - ' + str(staff.admin.last_name) + ' (' + str(staff.course) + ')',
         'total_students': total_students,
@@ -58,7 +68,8 @@ def staff_home(request):
         'total_leave': total_leave,
         'total_subject': total_subject,
         'subject_list': subject_list,
-        'attendance_list': attendance_list
+        'attendance_list': attendance_list,
+        'today_teacher_attendance': today_teacher_attendance,
     }
     return render(request, 'staff_template/home_content.html', context)
 
@@ -136,6 +147,16 @@ def save_attendance(request):
                 attendance_report.status = status in ('PRESENT', 'TARDY')
                 attendance_report.save()
 
+        # Real-time AI attendance tracking for teacher & students
+        auto_record_teacher_activity(subject.staff, attendance.date)
+        analyze_teacher_attendance(subject.staff, reference_date=attendance.date, create_alerts=True)
+        for student_dict in students:
+            stu = Student.objects.filter(id=student_dict.get('id')).first()
+            if stu:
+                analyze_student_attendance(
+                    stu, reference_date=attendance.date, create_alerts=True, actor=request.user
+                )
+
     except (TypeError, ValueError):
         return HttpResponseBadRequest("Invalid attendance request")
 
@@ -197,6 +218,18 @@ def update_attendance(request):
             attendance_report.attendance_status = status
             attendance_report.status = status in ('PRESENT', 'TARDY')
             attendance_report.save()
+
+        # Re-run AI attendance tracking after attendance update
+        auto_record_teacher_activity(attendance.subject.staff, attendance.date)
+        analyze_teacher_attendance(
+            attendance.subject.staff, reference_date=attendance.date, create_alerts=True
+        )
+        for student_dict in students:
+            stu = Student.objects.filter(admin_id=student_dict.get('id')).first()
+            if stu:
+                analyze_student_attendance(
+                    stu, reference_date=attendance.date, create_alerts=True, actor=request.user
+                )
     except (TypeError, ValueError):
         return HttpResponseBadRequest("Invalid attendance request")
 
@@ -893,3 +926,65 @@ def class_teacher_messages(request):
         'page_title': 'Class Messages'
     }
     return render(request, "staff_template/class_teacher_messages.html", context)
+
+
+def staff_attendance_checkin(request):
+    """Allow teachers to check in / check out daily and trigger AI admin notifications."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    today = timezone.localdate()
+    now_time = timezone.localtime().time().replace(microsecond=0)
+    today_record = TeacherAttendance.objects.filter(staff=staff, date=today).first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'checkin')
+        notes = request.POST.get('notes', '').strip()
+
+        if action == 'checkin':
+            status = 'LATE' if now_time > TEACHER_LATE_CUTOFF else 'PRESENT'
+            if today_record and today_record.check_in_time:
+                messages.info(request, f"You already checked in today at {today_record.check_in_time.strftime('%H:%M')}.")
+            else:
+                TeacherAttendance.objects.update_or_create(
+                    staff=staff,
+                    date=today,
+                    defaults={
+                        'status': status,
+                        'check_in_time': now_time,
+                        'source': 'SELF_CHECKIN',
+                        'notes': notes,
+                    },
+                )
+                analyze_teacher_attendance(staff, reference_date=today, create_alerts=True)
+                if status == 'LATE':
+                    messages.warning(
+                        request,
+                        f"Checked in at {now_time.strftime('%H:%M')} (Late — cutoff is {TEACHER_LATE_CUTOFF.strftime('%H:%M')}). Admin has been notified.",
+                    )
+                else:
+                    messages.success(request, f"Checked in successfully at {now_time.strftime('%H:%M')}.")
+        elif action == 'checkout':
+            if today_record:
+                today_record.check_out_time = now_time
+                if notes:
+                    today_record.notes = notes
+                today_record.save(update_fields=['check_out_time', 'notes', 'updated_at'])
+                messages.success(request, f"Checked out successfully at {now_time.strftime('%H:%M')}.")
+            else:
+                messages.error(request, "Please check in before checking out.")
+
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
+        return redirect('staff_attendance_checkin')
+
+    history = TeacherAttendance.objects.filter(staff=staff).order_by('-date')[:30]
+    profile = analyze_teacher_attendance(staff, reference_date=today, create_alerts=False)
+    context = {
+        'page_title': 'My Attendance Check-In',
+        'today': today,
+        'today_record': today_record,
+        'history': history,
+        'profile': profile,
+        'late_cutoff': TEACHER_LATE_CUTOFF.strftime('%H:%M'),
+    }
+    return render(request, 'staff_template/staff_attendance_checkin.html', context)

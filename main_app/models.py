@@ -39,13 +39,20 @@ class Session(models.Model):
 
 
 class CustomUser(AbstractUser):
-    USER_TYPE = ((1, "HOD"), (2, "Staff"), (3, "Student"))
+    USER_TYPE = (
+        ("1", "Principal / Administrator"),
+        ("2", "Subject Teacher"),
+        ("3", "Student"),
+        ("4", "Director of Studies (DOS)"),
+        ("5", "Bursar / Accountant"),
+        ("6", "Class Teacher"),
+    )
     GENDER = [("M", "Male"), ("F", "Female")]
     
     
     username = None  # Removed username, using email instead
     email = models.EmailField(unique=True)
-    user_type = models.CharField(default=1, choices=USER_TYPE, max_length=1)
+    user_type = models.CharField(default="1", choices=USER_TYPE, max_length=1)
     gender = models.CharField(max_length=1, choices=GENDER)
     profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, default='')
     address = models.TextField()
@@ -62,6 +69,24 @@ class CustomUser(AbstractUser):
 
 class Admin(models.Model):
     admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+
+
+class DirectorOfStudies(models.Model):
+    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.admin.get_full_name() or self.admin.email
+
+
+class Bursar(models.Model):
+    admin = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.admin.get_full_name() or self.admin.email
 
 
 
@@ -271,22 +296,34 @@ class StudentResult(models.Model):
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
     if created:
-        if str(instance.user_type) == '1':
+        role = str(instance.user_type)
+        if role == '1':
             Admin.objects.get_or_create(admin=instance)
-        if str(instance.user_type) == '2':
-            Staff.objects.get_or_create(admin=instance)
-        if str(instance.user_type) == '3':
+        elif role == '2':
+            Staff.objects.get_or_create(admin=instance, defaults={'class_teacher': False})
+        elif role == '3':
             Student.objects.get_or_create(admin=instance)
+        elif role == '4':
+            DirectorOfStudies.objects.get_or_create(admin=instance)
+        elif role == '5':
+            Bursar.objects.get_or_create(admin=instance)
+        elif role == '6':
+            Staff.objects.get_or_create(admin=instance, defaults={'class_teacher': True})
 
 
 @receiver(post_save, sender=CustomUser)
 def save_user_profile(sender, instance, **kwargs):
-    if str(instance.user_type) == '1' and hasattr(instance, 'admin'):
+    role = str(instance.user_type)
+    if role == '1' and hasattr(instance, 'admin'):
         instance.admin.save()
-    if str(instance.user_type) == '2' and hasattr(instance, 'staff'):
+    elif role in ('2', '6') and hasattr(instance, 'staff'):
         instance.staff.save()
-    if str(instance.user_type) == '3' and hasattr(instance, 'student'):
+    elif role == '3' and hasattr(instance, 'student'):
         instance.student.save()
+    elif role == '4' and hasattr(instance, 'directorofstudies'):
+        instance.directorofstudies.save()
+    elif role == '5' and hasattr(instance, 'bursar'):
+        instance.bursar.save()
 
 
 # Messaging system between students and class teachers
@@ -477,3 +514,154 @@ class SMSLog(models.Model):
 
     def __str__(self):
         return f"SMS to {self.student.admin.first_name} - {self.status}"
+
+
+class Examination(models.Model):
+    STATUS_CHOICES = (
+        ("UPCOMING", "Upcoming"),
+        ("ONGOING", "Ongoing"),
+        ("COMPLETED", "Completed"),
+        ("PUBLISHED", "Results Published"),
+    )
+
+    name = models.CharField(max_length=150)
+    session = models.ForeignKey(Session, on_delete=models.CASCADE)
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, null=True, blank=True,
+        help_text="Leave blank for school-wide exam")
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="UPCOMING")
+    description = models.TextField(blank=True, default="")
+    created_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-start_date", "name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.course.name if self.course else 'All Classes'})"
+
+
+class TimetableEntry(models.Model):
+    DAY_CHOICES = (
+        ("MON", "Monday"),
+        ("TUE", "Tuesday"),
+        ("WED", "Wednesday"),
+        ("THU", "Thursday"),
+        ("FRI", "Friday"),
+        ("SAT", "Saturday"),
+    )
+
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="timetable_entries")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="timetable_entries")
+    day_of_week = models.CharField(max_length=3, choices=DAY_CHOICES)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    room = models.CharField(max_length=60, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["day_of_week", "start_time"]
+
+    def __str__(self):
+        return f"{self.course.name} · {self.get_day_of_week_display()} {self.start_time} - {self.subject.name}"
+
+
+class Assignment(models.Model):
+    title = models.CharField(max_length=200)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="assignments")
+    staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name="assignments")
+    description = models.TextField()
+    due_date = models.DateField()
+    max_score = models.FloatField(default=100.0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-due_date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.title} ({self.subject.name})"
+
+
+class StudentWelfareRecord(models.Model):
+    CATEGORY_CHOICES = (
+        ("ACADEMIC", "Academic Support"),
+        ("COUNSELING", "Guidance & Counseling"),
+        ("HEALTH", "Health & Medical"),
+        ("DISCIPLINE", "Conduct & Discipline"),
+        ("ATTENDANCE", "Attendance Follow-up"),
+        ("RECOGNITION", "Merit / Recognition"),
+    )
+    STATUS_CHOICES = (
+        ("OPEN", "Open"),
+        ("IN_PROGRESS", "In Progress"),
+        ("RESOLVED", "Resolved"),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="welfare_records")
+    recorded_by = models.ForeignKey(
+        Staff, null=True, blank=True, on_delete=models.SET_NULL, related_name="welfare_records")
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="COUNSELING")
+    summary = models.TextField()
+    action_taken = models.TextField(blank=True, default="")
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="OPEN")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.student} - {self.get_category_display()} ({self.status})"
+
+
+class FeeStructure(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="fee_structures")
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="fee_structures")
+    title = models.CharField(max_length=150, default="Term Tuition & School Fees")
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    due_date = models.DateField(null=True, blank=True)
+    description = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.course.name} - {self.title} ({self.amount})"
+
+
+class FeePayment(models.Model):
+    PAYMENT_METHODS = (
+        ("CASH", "Cash"),
+        ("BANK_TRANSFER", "Bank Transfer"),
+        ("MOBILE_MONEY", "Mobile Money"),
+        ("CHEQUE", "Cheque"),
+    )
+
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="fee_payments")
+    fee_structure = models.ForeignKey(
+        FeeStructure, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
+    session = models.ForeignKey(Session, null=True, blank=True, on_delete=models.SET_NULL)
+    amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
+    payment_date = models.DateField()
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default="CASH")
+    receipt_number = models.CharField(max_length=40, unique=True)
+    reference_code = models.CharField(max_length=80, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    recorded_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL, related_name="recorded_payments")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-payment_date", "-created_at"]
+
+    def __str__(self):
+        return f"Receipt {self.receipt_number} - {self.student} ({self.amount_paid})"
