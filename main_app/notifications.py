@@ -16,6 +16,7 @@ from django.utils import timezone
 from .models import (
     AIAttendanceNotification,
     Assignment,
+    AssignmentComment,
     AssignmentSubmission,
     Course,
     Examination,
@@ -263,6 +264,28 @@ def get_user_notifications(user, limit=30):
                         "link": reverse("class_teacher_welfare"),
                     })
 
+            # Unread student private comments / replies on this teacher's assignments
+            for pc in AssignmentComment.objects.filter(
+                assignment__staff=staff,
+                submission__isnull=False,
+                is_read_by_recipient=False,
+            ).exclude(author=user).select_related(
+                "author", "assignment", "assignment__subject", "submission"
+            ).order_by("-created_at")[:10]:
+                items.append({
+                    "id": pc.id,
+                    "kind": "assignment_private_comment",
+                    "category": f"Private Message · {pc.assignment.subject.name}",
+                    "severity": "HIGH",
+                    "icon": "fa-comment-dots",
+                    "title": f"{pc.author.get_full_name() or pc.author.email} replied on '{pc.assignment.title}'",
+                    "message": pc.body,
+                    "created_at": pc.created_at,
+                    "is_unread": True,
+                    "needs_action": True,
+                    "link": reverse("staff_assignment_submissions", args=[pc.assignment_id]),
+                })
+
             # Student assignment submissions awaiting teacher grading
             for sub in AssignmentSubmission.objects.filter(
                 assignment__staff=staff, status__in=["TURNED_IN", "LATE"]
@@ -427,6 +450,27 @@ def get_user_notifications(user, limit=30):
                     "is_unread": not notif.is_read,
                     "needs_action": not notif.is_read,
                     "link": reverse("student_view_notification"),
+                })
+
+            # Unread teacher private comments on this student's assignment submissions
+            for pc in AssignmentComment.objects.filter(
+                submission__student=student,
+                is_read_by_recipient=False,
+            ).exclude(author=user).select_related(
+                "author", "assignment", "assignment__subject", "submission"
+            ).order_by("-created_at")[:10]:
+                items.append({
+                    "id": pc.id,
+                    "kind": "assignment_private_comment",
+                    "category": f"Teacher Private Message · {pc.assignment.subject.name}",
+                    "severity": "HIGH",
+                    "icon": "fa-comment-dots",
+                    "title": f"{pc.author.get_full_name() or pc.author.email} messaged you on '{pc.assignment.title}'",
+                    "message": pc.body,
+                    "created_at": pc.created_at,
+                    "is_unread": True,
+                    "needs_action": True,
+                    "link": reverse("student_assignment_workspace", args=[pc.assignment_id]),
                 })
 
             # Graded or returned-for-revision assignments for this student

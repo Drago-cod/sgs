@@ -12,6 +12,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from django.db import models as db_models
 from django.utils import timezone
+from django.views.decorators.http import require_POST
+from .ai_detector import analyze_assignment_originality
 from .forms import *
 from .middleware import get_user_home_url
 from .models import *
@@ -337,7 +339,7 @@ def student_assignments(request):
             state = "MISSING" if is_past_due else "ASSIGNED"
 
         counts["all"] += 1
-        if state in ("ASSIGNED", "DRAFT", "RETURNED"):
+        if state in ("ASSIGNED", "DRAFT", "RETURNED", "REJECTED_AI"):
             counts["todo"] += 1
         elif state in ("TURNED_IN", "LATE"):
             counts["turned_in"] += 1
@@ -354,7 +356,7 @@ def student_assignments(request):
         }
         if (
             filter_mode == "all"
-            or (filter_mode == "todo" and state in ("ASSIGNED", "DRAFT", "RETURNED"))
+            or (filter_mode == "todo" and state in ("ASSIGNED", "DRAFT", "RETURNED", "REJECTED_AI"))
             or (filter_mode == "turned_in" and state in ("TURNED_IN", "LATE"))
             or (filter_mode == "graded" and state == "GRADED")
             or (filter_mode == "missing" and state == "MISSING")
@@ -412,13 +414,17 @@ def student_assignment_workspace(request, assignment_id):
                         document_title=f"{assignment.title} - {student.admin.get_full_name()}",
                         status="DRAFT",
                     )
+                AssignmentComment.objects.filter(
+                    submission=submission, is_read_by_recipient=False
+                ).exclude(author=request.user).update(is_read_by_recipient=True)
                 AssignmentComment.objects.create(
                     assignment=assignment,
                     submission=submission,
                     author=request.user,
                     body=body,
+                    is_read_by_recipient=False,
                 )
-                messages.success(request, "Private comment sent to your teacher.")
+                messages.success(request, "Private message sent — your teacher has been notified.")
             return redirect("student_assignment_workspace", assignment_id=assignment.id)
 
         if action == "unsubmit":
@@ -442,6 +448,8 @@ def student_assignment_workspace(request, assignment_id):
         doc_title = request.POST.get("document_title", "").strip() or f"{assignment.title} - {student.admin.get_full_name()}"
         doc_content = request.POST.get("document_content", "").strip()
         uploaded = request.FILES.get("uploaded_file")
+        paste_ratio = request.POST.get("paste_ratio", "0")
+        paste_events = request.POST.get("paste_events", "0")
 
         if not submission:
             submission = AssignmentSubmission(assignment=assignment, student=student)
@@ -451,11 +459,51 @@ def student_assignment_workspace(request, assignment_id):
         if uploaded:
             submission.uploaded_file = uploaded
 
+        # Gather peer submission texts for copy-paste similarity check
+        peer_texts = list(
+            AssignmentSubmission.objects.filter(assignment=assignment)
+            .exclude(student=student)
+            .values_list("document_content", flat=True)
+        )
+        file_for_scan = uploaded or (submission.uploaded_file if submission.uploaded_file else None)
+        ai_result = analyze_assignment_originality(
+            document_content=submission.document_content,
+            uploaded_file=file_for_scan,
+            paste_ratio=paste_ratio,
+            paste_events=paste_events,
+            peer_texts=peer_texts,
+        )
+        submission.ai_score = ai_result["ai_score"]
+        submission.ai_flagged = ai_result["is_flagged"]
+        submission.ai_report = ai_result
+        submission.paste_ratio = ai_result["metrics"]["paste_ratio"]
+
         has_work = bool(submission.document_content.strip() or submission.uploaded_file)
         if action == "turn_in":
             if not has_work:
                 messages.error(request, "Please write your document or attach a file before turning in.")
                 return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+            # AUTOMATIC REJECTION if student forces submission of AI-generated / copy-pasted work
+            if ai_result["is_flagged"]:
+                submission.status = "REJECTED_AI"
+                submission.ai_rejection_count = (submission.ai_rejection_count or 0) + 1
+                submission.save()
+                NotificationStaff.objects.create(
+                    staff=assignment.staff,
+                    message=(
+                        f"AI Detector AUTO-REJECTED {student.admin.get_full_name()}'s forced submission "
+                        f"for '{assignment.title}' ({ai_result['ai_score']:.0f}% AI/copy-paste risk)."
+                    ),
+                )
+                reason_summary = " ".join(ai_result["reasons"][:2])
+                messages.error(
+                    request,
+                    f"SUBMISSION AUTOMATICALLY REJECTED: AI-generated or copy-pasted work detected "
+                    f"({ai_result['ai_score']:.0f}% risk). {reason_summary} Please rewrite in your own words and resubmit.",
+                )
+                return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
             submission.status = "LATE" if is_past_due else "TURNED_IN"
             submission.turned_in_at = timezone.now()
             submission.save()
@@ -468,19 +516,30 @@ def student_assignment_workspace(request, assignment_id):
             )
             messages.success(
                 request,
-                "Assignment turned in successfully!" if submission.status == "TURNED_IN"
-                else "Assignment turned in (marked late).",
+                "Originality verified! Assignment turned in successfully!" if submission.status == "TURNED_IN"
+                else "Originality verified! Assignment turned in (marked late).",
             )
         else:
             submission.status = "DRAFT"
             submission.save()
-            messages.success(request, "Document draft saved! Remember to click 'Turn In' when finished.")
+            if ai_result["is_flagged"]:
+                messages.warning(
+                    request,
+                    f"Draft saved — WARNING: AI-generated or copy-pasted work detected ({ai_result['ai_score']:.0f}% risk). "
+                    "Please rewrite in your own words before turning in, or submission will be automatically rejected.",
+                )
+            else:
+                messages.success(request, "Document draft saved! Remember to click 'Turn In' when finished.")
 
         return redirect("student_assignment_workspace", assignment_id=assignment.id)
 
     can_edit = (
-        not submission or submission.status in ("DRAFT", "RETURNED")
-    ) and (not is_past_due or assignment.allow_late_submission or (submission and submission.status == "RETURNED"))
+        not submission or submission.status in ("DRAFT", "RETURNED", "REJECTED_AI")
+    ) and (
+        not is_past_due
+        or assignment.allow_late_submission
+        or (submission and submission.status in ("RETURNED", "REJECTED_AI"))
+    )
 
     class_comments = AssignmentComment.objects.filter(
         assignment=assignment, submission__isnull=True
@@ -501,3 +560,33 @@ def student_assignment_workspace(request, assignment_id):
         "private_comments": private_comments,
     }
     return render(request, "student_template/student_assignment_workspace.html", context)
+
+
+@require_POST
+def student_check_assignment_ai(request, assignment_id):
+    """Real-time AJAX AI & copy-paste originality check BEFORE student submits."""
+    student = get_object_or_404(Student, admin=request.user)
+    assignment = get_object_or_404(
+        Assignment,
+        id=assignment_id,
+        subject__course=student.course,
+        is_published=True,
+    )
+    doc_content = request.POST.get("document_content", "")
+    paste_ratio = request.POST.get("paste_ratio", "0")
+    paste_events = request.POST.get("paste_events", "0")
+    uploaded = request.FILES.get("uploaded_file")
+
+    peer_texts = list(
+        AssignmentSubmission.objects.filter(assignment=assignment)
+        .exclude(student=student)
+        .values_list("document_content", flat=True)
+    )
+    result = analyze_assignment_originality(
+        document_content=doc_content,
+        uploaded_file=uploaded,
+        paste_ratio=paste_ratio,
+        paste_events=paste_events,
+        peer_texts=peer_texts,
+    )
+    return JsonResponse(result)

@@ -603,6 +603,7 @@ class AssignmentSubmission(models.Model):
         ("LATE", "Turned In Late"),
         ("GRADED", "Graded & Returned"),
         ("RETURNED", "Returned for Revision"),
+        ("REJECTED_AI", "Rejected (AI / Copy-Paste Detected)"),
     )
 
     assignment = models.ForeignKey(
@@ -620,6 +621,11 @@ class AssignmentSubmission(models.Model):
     turned_in_at = models.DateTimeField(null=True, blank=True)
     score = models.FloatField(null=True, blank=True)
     teacher_feedback = models.TextField(blank=True, default="")
+    ai_score = models.FloatField(default=0.0)
+    ai_flagged = models.BooleanField(default=False)
+    ai_report = models.JSONField(default=dict)
+    paste_ratio = models.FloatField(default=0.0)
+    ai_rejection_count = models.PositiveSmallIntegerField(default=0)
     graded_by = models.ForeignKey(
         CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
         related_name="graded_submissions"
@@ -651,6 +657,7 @@ class AssignmentComment(models.Model):
     )
     author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     body = models.TextField()
+    is_read_by_recipient = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -1084,13 +1084,17 @@ def staff_assignment_submissions(request, assignment_id):
             body = request.POST.get("body", "").strip()
             sub = get_object_or_404(AssignmentSubmission, id=sub_id, assignment=assignment)
             if body:
+                AssignmentComment.objects.filter(
+                    submission=sub, is_read_by_recipient=False
+                ).exclude(author=request.user).update(is_read_by_recipient=True)
                 AssignmentComment.objects.create(
                     assignment=assignment,
                     submission=sub,
                     author=request.user,
                     body=body,
+                    is_read_by_recipient=False,
                 )
-                messages.success(request, f"Private comment sent to {sub.student.admin.get_full_name()}.")
+                messages.success(request, f"Private message sent to {sub.student.admin.get_full_name()}.")
             return redirect("staff_assignment_submissions", assignment_id=assignment.id)
 
         if action in ("grade", "return_revision"):

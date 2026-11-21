@@ -208,6 +208,16 @@
                     <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">Manage Exams</a>
                 </form>
 
+                {% elif n.kind == 'assignment_private_comment' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reply_assignment_comment">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <input type="text" name="reply" class="form-control form-control-sm flex-fill" placeholder="Reply to private message..." required>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-reply mr-1"></i>Send Reply</button>
+                    <a href="{{ n.link }}" class="btn btn-sm btn-outline-secondary">Open Assignment</a>
+                </form>
+
                 {% elif n.kind == 'teacher_performance' %}
                 <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
                     {% csrf_token %}

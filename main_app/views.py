@@ -13,6 +13,7 @@ from .EmailBackend import EmailBackend
 from .middleware import get_user_home_url
 from .models import (
     AIAttendanceNotification,
+    AssignmentComment,
     AssignmentSubmission,
     Attendance,
     AttendanceAnomaly,
@@ -210,10 +211,16 @@ def notification_quick_respond(request):
             staff = Staff.objects.filter(admin=request.user).first()
             if staff:
                 NotificationStaff.objects.filter(staff=staff, is_read=False).update(is_read=True)
+                AssignmentComment.objects.filter(
+                    assignment__staff=staff, submission__isnull=False, is_read_by_recipient=False
+                ).exclude(author=request.user).update(is_read_by_recipient=True)
         elif role == "3":
             student = Student.objects.filter(admin=request.user).first()
             if student:
                 NotificationStudent.objects.filter(student=student, is_read=False).update(is_read=True)
+                AssignmentComment.objects.filter(
+                    submission__student=student, is_read_by_recipient=False
+                ).exclude(author=request.user).update(is_read_by_recipient=True)
         StudentMessage.objects.filter(receiver=request.user, is_read=False).update(is_read=True)
         messages.success(request, "All unread notifications marked as read.")
         return redirect(next_url)
@@ -345,6 +352,38 @@ def notification_quick_respond(request):
             perf.acknowledged_at = timezone.now()
             perf.save(update_fields=["teacher_response", "acknowledged_by_teacher", "acknowledged_at", "updated_at"])
             messages.success(request, "Performance feedback acknowledged and response saved.")
+
+    elif action == "reply_assignment_comment":
+        original = get_object_or_404(
+            AssignmentComment.objects.select_related(
+                "assignment", "assignment__staff__admin", "submission", "submission__student__admin"
+            ),
+            id=item_id,
+            submission__isnull=False,
+        )
+        is_teacher = original.assignment.staff.admin_id == request.user.id
+        is_student = original.submission.student.admin_id == request.user.id
+        if not (is_teacher or is_student):
+            messages.error(request, "Unauthorized to reply to this private message.")
+        else:
+            reply_text = request.POST.get("reply", "").strip()
+            if not reply_text:
+                messages.error(request, "Please type a reply before sending.")
+            else:
+                AssignmentComment.objects.filter(
+                    submission=original.submission, is_read_by_recipient=False
+                ).exclude(author=request.user).update(is_read_by_recipient=True)
+                AssignmentComment.objects.create(
+                    assignment=original.assignment,
+                    submission=original.submission,
+                    author=request.user,
+                    body=reply_text,
+                    is_read_by_recipient=False,
+                )
+                messages.success(
+                    request,
+                    f"Reply sent on '{original.assignment.title}'!",
+                )
 
     else:
         messages.error(request, "Unsupported or unauthorized notification action.")

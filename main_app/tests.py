@@ -817,3 +817,36 @@ class SixUserRolesTests(TestCase):
         self.assertContains(doc_resp, "JUBA ADVENTIST SECONDARY SCHOOL")
         self.assertContains(doc_resp, "logo.jpeg")
         self.assertContains(doc_resp, "46.0")
+
+        # 5. Two-way private message notifications between Teacher and Student
+        # Teacher sends private message on submission -> Student notified
+        self.client.post(
+            sub_hub_url,
+            {"action": "private_comment", "submission_id": sub.id, "body": "Can you expand paragraph 2?"},
+        )
+        self.client.force_login(self.student_user)
+        stu_nc = self.client.get(reverse("notification_center"))
+        self.assertContains(stu_nc, "Can you expand paragraph 2?")
+
+        # Student responds to teacher's private message -> Teacher immediately sees notification & replies inline
+        self.client.post(ws_url, {"action": "private_comment", "body": "Done! I expanded paragraph 2."})
+        self.client.force_login(self.subject_teacher_user)
+        teacher_nc = self.client.get(reverse("notification_center"))
+        self.assertEqual(teacher_nc.status_code, 200)
+        self.assertContains(teacher_nc, "Done! I expanded paragraph 2.")
+        self.assertGreaterEqual(teacher_nc.context["nav_unread_count"], 1)
+
+        student_pc = AssignmentComment.objects.filter(
+            submission=sub, author=self.student_user, body="Done! I expanded paragraph 2."
+        ).first()
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {"action": "reply_assignment_comment", "item_id": student_pc.id, "reply": "Looks great now!"},
+        )
+        student_pc.refresh_from_db()
+        self.assertTrue(student_pc.is_read_by_recipient)
+        self.assertTrue(
+            AssignmentComment.objects.filter(
+                submission=sub, author=self.subject_teacher_user, body="Looks great now!"
+            ).exists()
+        )
