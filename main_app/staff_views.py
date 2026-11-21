@@ -711,6 +711,8 @@ def view_student_result(request, student_id):
     context = {
         'student': student,
         'results': results,
+        'staff': staff,
+        'current_year': datetime.now().year,
         'page_title': f'Results for {student.admin.get_full_name()}'
     }
     return render(request, 'staff_template/view_student_result.html', context)
@@ -749,20 +751,37 @@ def download_student_result(request, student_id):
     styles = getSampleStyleSheet()
     
     # School Logo and Name
-    logo_path = os.path.join(settings.STATIC_ROOT, 'img', 'logo.jpeg')
-    if os.path.exists(logo_path):
+    logo_candidates = [
+        os.path.join(settings.STATIC_ROOT, 'img', 'logo.jpeg'),
+        os.path.join(settings.BASE_DIR, 'static', 'img', 'logo.jpeg'),
+        os.path.join(settings.BASE_DIR, 'main_app', 'static', 'img', 'logo.jpeg'),
+    ]
+    logo_path = next((p for p in logo_candidates if os.path.exists(p)), None)
+    if logo_path:
         logo = Image(logo_path, width=1*inch, height=1*inch)
+        logo.hAlign = 'CENTER'
         elements.append(logo)
-        elements.append(Spacer(1, 10))
-    
+        elements.append(Spacer(1, 8))
+
     school_style = ParagraphStyle(
         'SchoolStyle',
         parent=styles['Heading1'],
         fontSize=16,
-        alignment=1
+        alignment=1,
+        spaceAfter=4,
     )
-    elements.append(Paragraph("Juba Adventist Secondary School", school_style))
-    elements.append(Spacer(1, 20))
+    subtitle_style = ParagraphStyle(
+        'SchoolSubtitleStyle',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=1,
+        textColor=colors.HexColor('#555555'),
+        spaceAfter=2,
+    )
+    elements.append(Paragraph("JUBA ADVENTIST SECONDARY SCHOOL (JASS)", school_style))
+    elements.append(Paragraph("Seventh-day Round About, Juba, South Sudan", subtitle_style))
+    elements.append(Paragraph("Phone: +211 923 580 078", subtitle_style))
+    elements.append(Spacer(1, 16))
     
     # Student Info
     student_info = [

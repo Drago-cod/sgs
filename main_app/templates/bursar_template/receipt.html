@@ -25,18 +25,10 @@
 <section class="content">
     <div class="container-fluid">
         <div class="receipt-box">
-            <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-                <div class="d-flex align-items-center">
-                    <img src="{% static 'img/logo.jpeg' %}" alt="School Logo" style="height:60px;width:60px;border-radius:50%;object-fit:cover;" class="mr-3">
-                    <div>
-                        <h4 class="font-weight-bold mb-0 text-dark">JUBA ADVENTIST SECONDARY SCHOOL</h4>
-                        <small class="text-muted">Official School Fees Receipt</small>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span class="badge badge-primary p-2" style="font-size:0.95rem;">{{ payment.receipt_number }}</span>
-                    <div class="small text-muted mt-1">{{ payment.payment_date|date:"F d, Y" }}</div>
-                </div>
+            {% include "main_app/document_header.html" with doc_title="Official School Fees Receipt" %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="small text-muted">Payment Date: <strong>{{ payment.payment_date|date:"F d, Y" }}</strong></div>
+                <span class="badge badge-primary p-2" style="font-size:0.95rem;">Receipt #{{ payment.receipt_number }}</span>
             </div>
 
             <table class="table table-bordered">

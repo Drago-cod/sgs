@@ -1,11 +1,22 @@
 {% extends 'main_app/base.html' %}
 {% block page_title %}{{ page_title }}{% endblock page_title %}
 
+{% block custom_css %}
+<style>
+@media print {
+    .main-sidebar, .main-header, .main-footer, .no-print, .content-header { display: none !important; }
+    .content-wrapper { margin-left: 0 !important; background: #fff !important; }
+    .card { box-shadow: none !important; }
+    .col-lg-8 { flex: 0 0 100% !important; max-width: 100% !important; }
+}
+</style>
+{% endblock custom_css %}
+
 {% block content %}
 <section class="content">
     <div class="container-fluid">
         <div class="row">
-            <div class="col-lg-4 mb-3">
+            <div class="col-lg-4 mb-3 no-print">
                 <div class="card">
                     <div class="card-header bg-gradient-navy">
                         <h3 class="card-title mb-0"><i class="fas fa-plus mr-2"></i> Add Timetable Slot</h3>
@@ -32,18 +43,24 @@
 
             <div class="col-lg-8 mb-3">
                 <div class="card">
-                    <div class="card-header bg-gradient-teal d-flex flex-wrap justify-content-between align-items-center">
+                    <div class="card-header bg-gradient-teal d-flex flex-wrap justify-content-between align-items-center no-print">
                         <h3 class="card-title mb-0"><i class="fas fa-calendar-week mr-2"></i> Weekly Class Timetable</h3>
-                        <form method="get" class="form-inline">
-                            <select name="course" class="form-control form-control-sm" onchange="this.form.submit()">
-                                <option value="">All Classes</option>
-                                {% for c in courses %}
-                                <option value="{{ c.id }}" {% if selected_course and selected_course.id == c.id %}selected{% endif %}>{{ c.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </form>
+                        <div class="d-flex align-items-center" style="gap:8px;">
+                            <form method="get" class="form-inline">
+                                <select name="course" class="form-control form-control-sm" onchange="this.form.submit()">
+                                    <option value="">All Classes</option>
+                                    {% for c in courses %}
+                                    <option value="{{ c.id }}" {% if selected_course and selected_course.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </form>
+                            <button type="button" onclick="window.print()" class="btn btn-xs btn-light text-dark font-weight-bold">
+                                <i class="fas fa-print mr-1"></i> Print
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
+                        {% include "main_app/document_header.html" with doc_title="Academic Weekly Timetable" doc_subtitle=selected_course.name|default:"All Classes" %}
                         {% for day in grouped_timetable %}
                         <h6 class="font-weight-bold text-primary border-bottom pb-1 mt-3">{{ day.label }}</h6>
                         {% if day.entries %}

@@ -1,17 +1,31 @@
 {% extends 'main_app/base.html' %}
 {% block page_title %}{{ page_title }}{% endblock page_title %}
 
+{% block custom_css %}
+<style>
+@media print {
+    .main-sidebar, .main-header, .main-footer, .no-print, .content-header { display: none !important; }
+    .content-wrapper { margin-left: 0 !important; background: #fff !important; }
+    .card { box-shadow: none !important; }
+}
+</style>
+{% endblock custom_css %}
+
 {% block content %}
 <section class="content">
     <div class="container-fluid">
         <div class="card">
-            <div class="card-header bg-gradient-navy">
+            <div class="card-header bg-gradient-navy d-flex justify-content-between align-items-center no-print">
                 <h3 class="card-title mb-0">
                     <i class="fas fa-calendar-week mr-2"></i>
                     Weekly Timetable — {{ course.name|default:"My Class" }}
                 </h3>
+                <button type="button" onclick="window.print()" class="btn btn-xs btn-warning text-dark font-weight-bold">
+                    <i class="fas fa-print mr-1"></i> Print Timetable
+                </button>
             </div>
             <div class="card-body">
+                {% include "main_app/document_header.html" with doc_title="Class Weekly Timetable" doc_subtitle=course.name|default:"Student Timetable" %}
                 <div class="row">
                     {% for day in grouped_timetable %}
                     <div class="col-md-6 mb-3">

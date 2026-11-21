@@ -1,0 +1,20 @@
+{% load static %}
+<div class="school-doc-header" style="display:flex;align-items:center;justify-content:center;gap:20px;border-bottom:3px solid #1e3a5f;padding-bottom:16px;margin-bottom:20px;text-align:center;">
+    <img src="{% static 'img/logo.jpeg' %}" alt="Juba Adventist Secondary School Logo"
+         style="height:82px;width:82px;object-fit:contain;border-radius:8px;flex-shrink:0;">
+    <div>
+        <h3 style="margin:0 0 4px;font-weight:700;color:#1e3a5f;font-size:1.35rem;letter-spacing:0.3px;">
+            JUBA ADVENTIST SECONDARY SCHOOL (JASS)
+        </h3>
+        <p style="margin:0 0 2px;color:#444;font-size:0.9rem;">Seventh-day Round About, Juba, South Sudan</p>
+        <p style="margin:0 0 6px;color:#555;font-size:0.86rem;">Phone: +211 923 580 078</p>
+        {% if doc_title %}
+        <div style="display:inline-block;background:#eef3f8;color:#1e3a5f;font-weight:700;padding:3px 14px;border-radius:14px;font-size:0.92rem;text-transform:uppercase;letter-spacing:0.5px;">
+            {{ doc_title }}
+        </div>
+        {% endif %}
+        {% if doc_subtitle %}
+        <p style="margin:6px 0 0;color:#666;font-size:0.84rem;">{{ doc_subtitle }}</p>
+        {% endif %}
+    </div>
+</div>

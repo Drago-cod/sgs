@@ -467,3 +467,55 @@ class SixUserRolesTests(TestCase):
         # Principal has oversight access to DOS and Bursar hubs
         self.assertEqual(self.client.get(reverse("dos_home")).status_code, 200)
         self.assertEqual(self.client.get(reverse("bursar_home")).status_code, 200)
+
+    def test_all_documents_include_school_logo_and_name(self):
+        # Admin printable staff & student lists
+        self.client.force_login(self.principal)
+        for url_name in ("print_staff_list", "print_student_list"):
+            resp = self.client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+            self.assertContains(resp, "logo.jpeg")
+
+        # DOS printable academic results & timetable
+        self.client.force_login(self.dos)
+        for url_name in ("dos_academic_results", "dos_manage_timetable"):
+            resp = self.client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+            self.assertContains(resp, "logo.jpeg")
+
+        # Bursar printable financial report & receipt
+        self.client.force_login(self.bursar)
+        fs = FeeStructure.objects.create(
+            course=self.course, session=self.session, title="Tuition", amount=Decimal("200.00")
+        )
+        pay = FeePayment.objects.create(
+            student=self.student, fee_structure=fs, session=self.session,
+            amount_paid=Decimal("200.00"), payment_date=date(2026, 11, 21),
+            payment_method="CASH", receipt_number="JASS-2026-DOC1", recorded_by=self.bursar,
+        )
+        for url in (reverse("bursar_financial_reports"), reverse("bursar_receipt", args=[pay.id])):
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+            self.assertContains(resp, "logo.jpeg")
+
+        # Teacher printable subject lists & PDF result download
+        self.client.force_login(self.class_teacher_user)
+        sub_list_resp = self.client.get(reverse("print_subject_student_lists"))
+        self.assertEqual(sub_list_resp.status_code, 200)
+        self.assertContains(sub_list_resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+        self.assertContains(sub_list_resp, "logo.jpeg")
+
+        pdf_resp = self.client.get(reverse("download_student_result", args=[self.student.id]))
+        self.assertEqual(pdf_resp.status_code, 200)
+        self.assertEqual(pdf_resp["Content-Type"], "application/pdf")
+
+        # Student result slip & timetable
+        self.client.force_login(self.student_user)
+        for url_name in ("student_view_result", "student_timetable"):
+            resp = self.client.get(reverse(url_name))
+            self.assertEqual(resp.status_code, 200)
+            self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+            self.assertContains(resp, "logo.jpeg")

@@ -4,20 +4,17 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ page_title }}</title>
+    <title>Juba Adventist Secondary School - {{ page_title }}</title>
     <style>
         body { font: 14px Arial, sans-serif; color: #222; margin: 24px; }
-        header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        header img { width: 64px; height: 64px; object-fit: contain; }
-        h1 { margin: 0 0 4px; font-size: 22px; }
+        h2 { margin: 0; font-size: 18px; color: #1e3a5f; }
         p { margin: 0; color: #555; }
-        h2 { margin: 0; font-size: 18px; }
         .subject-roster { margin: 0 0 28px; break-inside: avoid; }
         .subject-header { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #777; padding: 8px; text-align: left; }
-        th { background: #eef3f8; }
-        .print-button { margin-bottom: 16px; padding: 8px 14px; cursor: pointer; }
+        th { background: #eef3f8; color: #1e3a5f; }
+        .print-button { margin-bottom: 16px; padding: 8px 16px; background: #1e3a5f; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         @media print {
             body { margin: 0; }
             .print-button { display: none; }
@@ -27,14 +24,11 @@
     </style>
 </head>
 <body>
-    <button class="print-button" type="button" onclick="window.print()">Print</button>
-    <header>
-        <img src="{% static 'img/logo.jpeg' %}" alt="School logo">
-        <div>
-            <h1>Student Lists by Subject</h1>
-            <p>Teacher: {{ staff.admin.get_full_name }} · Generated {% now "F j, Y" %}</p>
-        </div>
-    </header>
+    <button class="print-button" type="button" onclick="window.print()">Print Subject Student Lists</button>
+    {% now "F j, Y" as generated_date %}
+    {% with teacher_name=staff.admin.get_full_name %}
+        {% include "main_app/document_header.html" with doc_title="Student Lists by Subject" doc_subtitle="Teacher: "|add:teacher_name|add:" · Generated "|add:generated_date %}
+    {% endwith %}
 
     {% for roster in subject_rosters %}
     <section class="subject-roster">
