@@ -394,13 +394,35 @@ class AssignmentForm(FormSettings):
         super(AssignmentForm, self).__init__(*args, **kwargs)
         if staff is not None:
             self.fields['subject'].queryset = Subject.objects.filter(staff=staff)
+        self.fields['allow_late_submission'].widget.attrs['class'] = 'form-check-input'
 
     class Meta:
         model = Assignment
-        fields = ['title', 'subject', 'description', 'due_date', 'max_score']
+        fields = [
+            'title',
+            'subject',
+            'topic',
+            'description',
+            'attachment',
+            'due_date',
+            'max_score',
+            'allow_late_submission',
+        ]
         widgets = {
+            'topic': forms.TextInput(attrs={'placeholder': 'e.g. Unit 3: Algebra (optional)'}),
             'due_date': DateInput(attrs={'type': 'date'}),
-            'description': forms.Textarea(attrs={'rows': 3}),
+            'description': forms.Textarea(attrs={'rows': 4, 'placeholder': 'Instructions, rubric, or questions...'}),
+            'allow_late_submission': forms.CheckboxInput(),
+        }
+
+
+class AssignmentSubmissionForm(FormSettings):
+    class Meta:
+        model = AssignmentSubmission
+        fields = ['document_title', 'document_content', 'uploaded_file']
+        widgets = {
+            'document_title': forms.TextInput(attrs={'placeholder': 'Document Title (e.g. Lab Report - Draft 1)'}),
+            'document_content': forms.Textarea(attrs={'rows': 10, 'class': 'form-control summernote-doc'}),
         }
 
 

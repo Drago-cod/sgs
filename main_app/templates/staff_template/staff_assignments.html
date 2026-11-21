@@ -8,21 +8,28 @@
             <div class="col-lg-4 mb-3">
                 <div class="card">
                     <div class="card-header bg-gradient-navy">
-                        <h3 class="card-title mb-0"><i class="fas fa-plus-circle mr-2"></i> Create Assignment</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-plus-circle mr-2"></i> Create Classroom Assignment</h3>
                     </div>
-                    <form method="post">
+                    <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
                         <div class="card-body">
                             {% for field in form %}
-                            <div class="form-group">
-                                {{ field.errors }}
-                                {{ field.label_tag }}
+                            <div class="form-group mb-2">
+                                {% if field.name == 'allow_late_submission' %}
+                                <div class="form-check">
+                                    {{ field }}
+                                    <label class="form-check-label font-weight-bold small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                </div>
+                                {% else %}
+                                <label class="small font-weight-bold mb-1" for="{{ field.id_for_label }}">{{ field.label }}</label>
                                 {{ field }}
+                                {% endif %}
+                                {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
                             </div>
                             {% endfor %}
                         </div>
                         <div class="card-footer">
-                            <button type="submit" class="btn btn-primary btn-block">
+                            <button type="submit" class="btn btn-primary btn-block font-weight-bold">
                                 <i class="fas fa-paper-plane mr-1"></i> Publish Assignment
                             </button>
                         </div>
@@ -33,44 +40,64 @@
             <div class="col-lg-8 mb-3">
                 <div class="card">
                     <div class="card-header bg-gradient-teal">
-                        <h3 class="card-title mb-0"><i class="fas fa-tasks mr-2"></i> Published Subject Assignments</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-chalkboard mr-2"></i> Published Assignments &amp; Submission Status</h3>
                     </div>
-                    <div class="card-body table-responsive p-0">
-                        <table class="table table-hover mb-0">
-                            <thead class="thead-light">
-                                <tr>
-                                    <th>Title</th>
-                                    <th>Subject / Class</th>
-                                    <th>Due Date</th>
-                                    <th>Max Score</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in assignments %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ item.title }}</strong>
-                                        <small class="text-muted d-block">{{ item.description|truncatechars:100 }}</small>
-                                    </td>
-                                    <td>
-                                        {{ item.subject.name }}
-                                        <small class="text-muted d-block">{{ item.subject.course.name }}</small>
-                                    </td>
-                                    <td>{{ item.due_date|date:"M d, Y" }}</td>
-                                    <td>{{ item.max_score|floatformat:0 }}</td>
-                                    <td>
-                                        <form method="post" action="{% url 'staff_delete_assignment' item.id %}" onsubmit="return confirm('Delete this assignment?')">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
-                                        </form>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="5" class="text-center py-4 text-muted">No assignments published yet.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="card-body">
+                        {% for row in assignment_rows %}
+                        {% with item=row.assignment %}
+                        <div class="border rounded p-3 mb-3" style="border-left: 5px solid #1e3a5f !important;">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start mb-2">
+                                <div>
+                                    <span class="badge badge-primary mr-1">{{ item.subject.name }}</span>
+                                    <span class="badge badge-secondary mr-1">{{ item.subject.course.name }}</span>
+                                    {% if item.topic %}
+                                    <span class="badge badge-light border mr-1">{{ item.topic }}</span>
+                                    {% endif %}
+                                    <h5 class="font-weight-bold text-dark mt-2 mb-1">{{ item.title }}</h5>
+                                    <small class="text-muted">Due: <strong>{{ item.due_date|date:"M d, Y" }}</strong> &middot; {{ item.max_score|floatformat:0 }} pts</small>
+                                </div>
+                                <div class="d-flex text-center" style="gap: 14px;">
+                                    <div>
+                                        <div class="h4 font-weight-bold text-info mb-0">{{ row.turned_in }}</div>
+                                        <small class="text-muted">Turned In</small>
+                                    </div>
+                                    <div>
+                                        <div class="h4 font-weight-bold text-secondary mb-0">{{ row.pending }}</div>
+                                        <small class="text-muted">Assigned</small>
+                                    </div>
+                                    <div>
+                                        <div class="h4 font-weight-bold text-success mb-0">{{ row.graded }}</div>
+                                        <small class="text-muted">Graded</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="small text-secondary mb-2">{{ item.description|truncatechars:140 }}</p>
+                            <div class="d-flex flex-wrap justify-content-between align-items-center pt-2 border-top">
+                                <div>
+                                    {% if item.attachment %}
+                                    <a href="{{ item.attachment.url }}" target="_blank" class="btn btn-xs btn-outline-secondary">
+                                        <i class="fas fa-paperclip mr-1"></i> Attached Material
+                                    </a>
+                                    {% endif %}
+                                </div>
+                                <div class="d-flex" style="gap: 8px;">
+                                    <a href="{% url 'staff_assignment_submissions' item.id %}" class="btn btn-sm btn-primary font-weight-bold">
+                                        <i class="fas fa-clipboard-check mr-1"></i> Review &amp; Grade Submissions
+                                    </a>
+                                    <form method="post" action="{% url 'staff_delete_assignment' item.id %}" onsubmit="return confirm('Delete this assignment and all its submissions?')">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% endwith %}
+                        {% empty %}
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-tasks fa-3x mb-2 text-info"></i>
+                            <p class="mb-0">No assignments published yet. Create your first assignment on the left.</p>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>

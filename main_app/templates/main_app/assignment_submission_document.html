@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>JASS Document — {{ page_title }}</title>
+    <style>
+        body { font: 15px/1.6 Georgia, "Times New Roman", serif; color: #222; background: #f4f6f9; margin: 0; padding: 24px; }
+        .doc-sheet { max-width: 820px; margin: 0 auto; background: #fff; padding: 40px 48px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); border-radius: 8px; }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-family: Arial, sans-serif; font-size: 13px; background: #f8fafc; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 24px; }
+        .doc-title { font-family: Arial, sans-serif; color: #1e3a5f; font-size: 20px; margin: 0 0 14px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+        .doc-body { min-height: 240px; margin-bottom: 28px; }
+        .grade-box { font-family: Arial, sans-serif; background: #edf7ed; border-left: 4px solid #28a745; padding: 14px 18px; border-radius: 6px; margin-top: 20px; }
+        .toolbar { max-width: 820px; margin: 0 auto 14px; display: flex; justify-content: space-between; font-family: Arial, sans-serif; }
+        .btn { padding: 8px 16px; border-radius: 6px; text-decoration: none; border: none; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .btn-primary { background: #1e3a5f; color: #fff; }
+        .btn-secondary { background: #6c757d; color: #fff; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .doc-sheet { box-shadow: none; padding: 12px; }
+            .toolbar { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button type="button" class="btn btn-secondary" onclick="window.close(); history.back();">&larr; Back</button>
+        <button type="button" class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="doc-sheet">
+        {% include "main_app/document_header.html" with doc_title="Student Assignment Submission" doc_subtitle=assignment.subject.name|add:" — "|add:assignment.subject.course.name %}
+
+        <div class="meta-grid">
+            <div><strong>Student:</strong> {{ submission.student.admin.get_full_name }}</div>
+            <div><strong>Class:</strong> {{ assignment.subject.course.name }}</div>
+            <div><strong>Assignment:</strong> {{ assignment.title }}</div>
+            <div><strong>Subject Teacher:</strong> {{ assignment.staff.admin.get_full_name }}</div>
+            <div><strong>Status:</strong> {{ submission.get_status_display }}</div>
+            <div><strong>Submitted:</strong> {{ submission.turned_in_at|date:"F j, Y H:i"|default:"Draft" }}</div>
+        </div>
+
+        <h2 class="doc-title">{{ submission.document_title|default:assignment.title }}</h2>
+
+        <div class="doc-body">
+            {% if submission.document_content %}
+                {{ submission.document_content|safe }}
+            {% else %}
+                <p style="color:#777;"><em>No inline document text entered.</em></p>
+            {% endif %}
+        </div>
+
+        {% if submission.uploaded_file %}
+        <div style="font-family:Arial,sans-serif;font-size:13px;margin-bottom:16px;">
+            <strong>Attached File:</strong>
+            <a href="{{ submission.uploaded_file.url }}" target="_blank">{{ submission.uploaded_file.name }}</a>
+        </div>
+        {% endif %}
+
+        {% if submission.status == 'GRADED' or submission.teacher_feedback %}
+        <div class="grade-box">
+            {% if submission.score is not None %}
+            <div><strong>Score:</strong> {{ submission.score|floatformat:1 }} / {{ assignment.max_score|floatformat:0 }}</div>
+            {% endif %}
+            {% if submission.teacher_feedback %}
+            <div style="margin-top:6px;"><strong>Teacher Feedback:</strong> {{ submission.teacher_feedback }}</div>
+            {% endif %}
+            {% if submission.graded_by %}
+            <div style="margin-top:6px;font-size:12px;color:#555;">Graded by {{ submission.graded_by.get_full_name }} on {{ submission.graded_at|date:"F j, Y" }}</div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

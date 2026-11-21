@@ -311,18 +311,193 @@ def student_timetable(request):
 
 def student_assignments(request):
     student = get_object_or_404(Student, admin=request.user)
+    filter_mode = request.GET.get("filter", "all").lower()
+    today = timezone.localdate()
+
     assignments = (
-        Assignment.objects.filter(subject__course=student.course)
+        Assignment.objects.filter(subject__course=student.course, is_published=True)
         .select_related('subject', 'staff__admin')
         .order_by('due_date', '-created_at')
         if student.course_id
         else Assignment.objects.none()
     )
-    today = timezone.localdate()
+    submissions_map = {
+        sub.assignment_id: sub
+        for sub in AssignmentSubmission.objects.filter(student=student)
+    }
+
+    rows = []
+    counts = {"all": 0, "todo": 0, "turned_in": 0, "graded": 0, "missing": 0}
+    for item in assignments:
+        sub = submissions_map.get(item.id)
+        is_past_due = item.due_date < today
+        if sub:
+            state = sub.status
+        else:
+            state = "MISSING" if is_past_due else "ASSIGNED"
+
+        counts["all"] += 1
+        if state in ("ASSIGNED", "DRAFT", "RETURNED"):
+            counts["todo"] += 1
+        elif state in ("TURNED_IN", "LATE"):
+            counts["turned_in"] += 1
+        elif state == "GRADED":
+            counts["graded"] += 1
+        elif state == "MISSING":
+            counts["missing"] += 1
+
+        row = {
+            "assignment": item,
+            "submission": sub,
+            "state": state,
+            "is_past_due": is_past_due,
+        }
+        if (
+            filter_mode == "all"
+            or (filter_mode == "todo" and state in ("ASSIGNED", "DRAFT", "RETURNED"))
+            or (filter_mode == "turned_in" and state in ("TURNED_IN", "LATE"))
+            or (filter_mode == "graded" and state == "GRADED")
+            or (filter_mode == "missing" and state == "MISSING")
+        ):
+            rows.append(row)
+
     context = {
-        "page_title": "My Assignments & Assessments",
-        "assignments": assignments,
+        "page_title": "Classwork & Assignments",
+        "rows": rows,
+        "counts": counts,
+        "filter_mode": filter_mode,
         "today": today,
         "course": student.course,
     }
     return render(request, "student_template/student_assignments.html", context)
+
+
+def student_assignment_workspace(request, assignment_id):
+    """Google Classroom-style document workspace where a student works on and turns in an assignment."""
+    student = get_object_or_404(Student, admin=request.user)
+    assignment = get_object_or_404(
+        Assignment.objects.select_related('subject', 'subject__course', 'staff__admin'),
+        id=assignment_id,
+        subject__course=student.course,
+        is_published=True,
+    )
+    submission = AssignmentSubmission.objects.filter(
+        assignment=assignment, student=student
+    ).first()
+    today = timezone.localdate()
+    is_past_due = assignment.due_date < today
+
+    if request.method == "POST":
+        action = request.POST.get("action", "save_draft")
+
+        if action == "class_comment":
+            body = request.POST.get("body", "").strip()
+            if body:
+                AssignmentComment.objects.create(
+                    assignment=assignment,
+                    submission=None,
+                    author=request.user,
+                    body=body,
+                )
+                messages.success(request, "Class comment posted.")
+            return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+        if action == "private_comment":
+            body = request.POST.get("body", "").strip()
+            if body:
+                if not submission:
+                    submission = AssignmentSubmission.objects.create(
+                        assignment=assignment,
+                        student=student,
+                        document_title=f"{assignment.title} - {student.admin.get_full_name()}",
+                        status="DRAFT",
+                    )
+                AssignmentComment.objects.create(
+                    assignment=assignment,
+                    submission=submission,
+                    author=request.user,
+                    body=body,
+                )
+                messages.success(request, "Private comment sent to your teacher.")
+            return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+        if action == "unsubmit":
+            if submission and submission.status in ("TURNED_IN", "LATE"):
+                submission.status = "DRAFT"
+                submission.save(update_fields=["status", "updated_at"])
+                messages.info(request, "Submission unsubmitted. You can edit your document and turn it in again.")
+            else:
+                messages.error(request, "Cannot unsubmit once graded.")
+            return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+        # Save Draft or Turn In
+        if submission and submission.status in ("TURNED_IN", "LATE", "GRADED"):
+            messages.error(request, "Unsubmit your work first before editing.")
+            return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+        if action == "turn_in" and is_past_due and not assignment.allow_late_submission:
+            messages.error(request, "Late submissions are closed for this assignment.")
+            return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+        doc_title = request.POST.get("document_title", "").strip() or f"{assignment.title} - {student.admin.get_full_name()}"
+        doc_content = request.POST.get("document_content", "").strip()
+        uploaded = request.FILES.get("uploaded_file")
+
+        if not submission:
+            submission = AssignmentSubmission(assignment=assignment, student=student)
+
+        submission.document_title = doc_title
+        submission.document_content = doc_content
+        if uploaded:
+            submission.uploaded_file = uploaded
+
+        has_work = bool(submission.document_content.strip() or submission.uploaded_file)
+        if action == "turn_in":
+            if not has_work:
+                messages.error(request, "Please write your document or attach a file before turning in.")
+                return redirect("student_assignment_workspace", assignment_id=assignment.id)
+            submission.status = "LATE" if is_past_due else "TURNED_IN"
+            submission.turned_in_at = timezone.now()
+            submission.save()
+            NotificationStaff.objects.create(
+                staff=assignment.staff,
+                message=(
+                    f"{student.admin.get_full_name()} turned in '{assignment.title}' "
+                    f"({assignment.subject.name}){' [LATE]' if submission.status == 'LATE' else ''}."
+                ),
+            )
+            messages.success(
+                request,
+                "Assignment turned in successfully!" if submission.status == "TURNED_IN"
+                else "Assignment turned in (marked late).",
+            )
+        else:
+            submission.status = "DRAFT"
+            submission.save()
+            messages.success(request, "Document draft saved! Remember to click 'Turn In' when finished.")
+
+        return redirect("student_assignment_workspace", assignment_id=assignment.id)
+
+    can_edit = (
+        not submission or submission.status in ("DRAFT", "RETURNED")
+    ) and (not is_past_due or assignment.allow_late_submission or (submission and submission.status == "RETURNED"))
+
+    class_comments = AssignmentComment.objects.filter(
+        assignment=assignment, submission__isnull=True
+    ).select_related("author")
+    private_comments = (
+        AssignmentComment.objects.filter(assignment=assignment, submission=submission)
+        .select_related("author")
+        if submission else AssignmentComment.objects.none()
+    )
+
+    context = {
+        "page_title": assignment.title,
+        "assignment": assignment,
+        "submission": submission,
+        "is_past_due": is_past_due,
+        "can_edit": can_edit,
+        "class_comments": class_comments,
+        "private_comments": private_comments,
+    }
+    return render(request, "student_template/student_assignment_workspace.html", context)

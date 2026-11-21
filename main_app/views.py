@@ -13,6 +13,7 @@ from .EmailBackend import EmailBackend
 from .middleware import get_user_home_url
 from .models import (
     AIAttendanceNotification,
+    AssignmentSubmission,
     Attendance,
     AttendanceAnomaly,
     AttendanceAuditEvent,
@@ -349,3 +350,30 @@ def notification_quick_respond(request):
         messages.error(request, "Unsupported or unauthorized notification action.")
 
     return redirect(next_url)
+
+
+@login_required
+def assignment_submission_document(request, submission_id):
+    """Printable JASS official document sheet for a student's submitted assignment."""
+    submission = get_object_or_404(
+        AssignmentSubmission.objects.select_related(
+            "assignment", "assignment__subject", "assignment__subject__course",
+            "assignment__staff__admin", "student__admin", "graded_by"
+        ),
+        id=submission_id,
+    )
+    role = str(getattr(request.user, "user_type", ""))
+    allowed = (
+        role in ("1", "4")
+        or submission.student.admin_id == request.user.id
+        or submission.assignment.staff.admin_id == request.user.id
+    )
+    if not allowed:
+        return HttpResponse("Forbidden", status=403)
+
+    context = {
+        "page_title": submission.document_title or submission.assignment.title,
+        "submission": submission,
+        "assignment": submission.assignment,
+    }
+    return render(request, "main_app/assignment_submission_document.html", context)

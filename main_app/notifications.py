@@ -16,6 +16,7 @@ from django.utils import timezone
 from .models import (
     AIAttendanceNotification,
     Assignment,
+    AssignmentSubmission,
     Course,
     Examination,
     FeePayment,
@@ -262,6 +263,25 @@ def get_user_notifications(user, limit=30):
                         "link": reverse("class_teacher_welfare"),
                     })
 
+            # Student assignment submissions awaiting teacher grading
+            for sub in AssignmentSubmission.objects.filter(
+                assignment__staff=staff, status__in=["TURNED_IN", "LATE"]
+            ).select_related("student__admin", "assignment", "assignment__subject").order_by("-turned_in_at")[:6]:
+                items.append({
+                    "id": sub.id,
+                    "kind": "info_link",
+                    "category": "Assignment Turned In",
+                    "severity": "HIGH" if sub.status == "LATE" else "MEDIUM",
+                    "icon": "fa-file-alt",
+                    "title": f"{sub.student.admin.get_full_name()} submitted '{sub.assignment.title}'",
+                    "message": f"{sub.assignment.subject.name} · {sub.get_status_display()}",
+                    "created_at": sub.turned_in_at or sub.updated_at,
+                    "is_unread": True,
+                    "needs_action": True,
+                    "action_label": "Review & Grade",
+                    "link": reverse("staff_assignment_submissions", args=[sub.assignment_id]),
+                })
+
             # Admin / DOS teacher performance feedback awaiting acknowledgement
             for perf in TeacherPerformanceFeedback.objects.filter(
                 staff=staff, acknowledged_by_teacher=False
@@ -407,6 +427,30 @@ def get_user_notifications(user, limit=30):
                     "is_unread": not notif.is_read,
                     "needs_action": not notif.is_read,
                     "link": reverse("student_view_notification"),
+                })
+
+            # Graded or returned-for-revision assignments for this student
+            for sub in AssignmentSubmission.objects.filter(
+                student=student, status__in=["GRADED", "RETURNED"]
+            ).select_related("assignment", "assignment__subject").order_by("-graded_at")[:5]:
+                is_rev = sub.status == "RETURNED"
+                items.append({
+                    "id": sub.id,
+                    "kind": "info_link",
+                    "category": "Revision Requested" if is_rev else "Assignment Graded",
+                    "severity": "HIGH" if is_rev else "LOW",
+                    "icon": "fa-clipboard-check",
+                    "title": f"{sub.assignment.title} ({sub.assignment.subject.name})",
+                    "message": (
+                        f"Returned for revision: {sub.teacher_feedback or 'Please review comments and resubmit.'}"
+                        if is_rev else
+                        f"Score: {sub.score:.1f}/{sub.assignment.max_score:.0f} — {sub.teacher_feedback or 'Graded by teacher.'}"
+                    ),
+                    "created_at": sub.graded_at or sub.updated_at,
+                    "is_unread": is_rev,
+                    "needs_action": is_rev,
+                    "action_label": "Open Workspace",
+                    "link": reverse("student_assignment_workspace", args=[sub.assignment_id]),
                 })
 
             if student.course_id:

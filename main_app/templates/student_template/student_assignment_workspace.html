@@ -1,0 +1,240 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ assignment.title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="mb-3 d-flex justify-content-between align-items-center">
+            <a href="{% url 'student_assignments' %}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left mr-1"></i> Back to Classwork
+            </a>
+            {% if submission %}
+            <a href="{% url 'assignment_submission_document' submission.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+                <i class="fas fa-print mr-1"></i> Print / Export Submitted Document
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="row">
+            <!-- Left Column: Instructions & Class Comments -->
+            <div class="col-lg-5 mb-4">
+                <div class="card mb-3">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-book-open mr-2"></i> Assignment Instructions</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <span class="badge badge-primary">{{ assignment.subject.name }}</span>
+                            {% if assignment.topic %}
+                            <span class="badge badge-info">{{ assignment.topic }}</span>
+                            {% endif %}
+                            <span class="badge badge-light border">{{ assignment.max_score|floatformat:0 }} points</span>
+                        </div>
+                        <h4 class="font-weight-bold text-dark">{{ assignment.title }}</h4>
+                        <p class="small text-muted mb-3">
+                            Posted by <strong>{{ assignment.staff.admin.get_full_name }}</strong> &middot;
+                            Due <strong class="{% if is_past_due %}text-danger{% endif %}">{{ assignment.due_date|date:"M d, Y" }}</strong>
+                        </p>
+                        <div class="p-3 rounded bg-light mb-3" style="white-space: pre-line;">{{ assignment.description }}</div>
+                        {% if assignment.attachment %}
+                        <a href="{{ assignment.attachment.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-paperclip mr-1"></i> Download Teacher Material / Worksheet
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Class Comments -->
+                <div class="card">
+                    <div class="card-header bg-gradient-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-comments mr-2"></i> Class Comments ({{ class_comments|length }})</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for c in class_comments %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <strong>{{ c.author.get_full_name|default:c.author.email }}</strong>
+                                <span class="text-muted">{{ c.created_at|date:"M d, H:i" }}</span>
+                            </div>
+                            <div class="small mt-1">{{ c.body }}</div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small mb-2">No class comments yet. Ask a question about this assignment.</p>
+                        {% endfor %}
+                        <form method="post" class="mt-3">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="class_comment">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="body" class="form-control" placeholder="Add a class comment..." required>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-info"><i class="fas fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Student Document Workspace ("Your Work") & Private Comments -->
+            <div class="col-lg-7 mb-4">
+                {% if submission and submission.status == 'GRADED' %}
+                <div class="card mb-3 border-success">
+                    <div class="card-header bg-gradient-green d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-award mr-2"></i> Graded &amp; Returned</h3>
+                        <span class="badge badge-light text-dark p-2" style="font-size:1rem;">
+                            Score: {{ submission.score|floatformat:1 }} / {{ assignment.max_score|floatformat:0 }}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-1"><strong>Teacher Feedback:</strong></p>
+                        <p class="mb-0 text-dark">{{ submission.teacher_feedback|default:"Great work! Graded by your teacher." }}</p>
+                    </div>
+                </div>
+                {% elif submission and submission.status == 'RETURNED' %}
+                <div class="alert alert-warning">
+                    <strong><i class="fas fa-redo mr-1"></i> Returned for Revision:</strong>
+                    {{ submission.teacher_feedback|default:"Your teacher asked you to revise and resubmit your document." }}
+                </div>
+                {% endif %}
+
+                <div class="card mb-3">
+                    <div class="card-header bg-gradient-navy d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-file-word mr-2"></i> Your Work (Document Workspace)</h3>
+                        {% if submission %}
+                        <span class="badge {% if submission.status == 'GRADED' %}badge-success{% elif submission.status == 'TURNED_IN' %}badge-info{% elif submission.status == 'LATE' or submission.status == 'RETURNED' %}badge-warning text-dark{% else %}badge-light text-dark{% endif %}">
+                            {{ submission.get_status_display }}
+                        </span>
+                        {% else %}
+                        <span class="badge badge-light text-dark">Assigned</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="card-body">
+                        {% if can_edit %}
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label class="small font-weight-bold">Document Title</label>
+                                <input type="text" name="document_title" class="form-control"
+                                       value="{{ submission.document_title|default:assignment.title }}"
+                                       placeholder="Enter your document title...">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="small font-weight-bold">
+                                    Work on Your Document <small class="text-muted">(Rich text formatting supported)</small>
+                                </label>
+                                <textarea name="document_content" id="docEditor" class="form-control" rows="10">{{ submission.document_content|default:'' }}</textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="small font-weight-bold">
+                                    <i class="fas fa-upload mr-1"></i> Or Attach a Document File <small class="text-muted">(PDF, DOCX, DOC, TXT, Image — optional)</small>
+                                </label>
+                                <input type="file" name="uploaded_file" class="form-control-file"
+                                       accept=".pdf,.doc,.docx,.txt,.odt,.rtf,.png,.jpg,.jpeg">
+                                {% if submission and submission.uploaded_file %}
+                                <div class="mt-2 small">
+                                    Currently attached:
+                                    <a href="{{ submission.uploaded_file.url }}" target="_blank" class="font-weight-bold">
+                                        <i class="fas fa-paperclip mr-1"></i>{{ submission.uploaded_file.name }}
+                                    </a>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-flex flex-wrap" style="gap: 10px;">
+                                <button type="submit" name="action" value="save_draft" class="btn btn-outline-primary flex-fill font-weight-bold">
+                                    <i class="fas fa-save mr-1"></i> Save Draft
+                                </button>
+                                <button type="submit" name="action" value="turn_in" class="btn btn-success flex-fill font-weight-bold"
+                                        onclick="return confirm('Turn in this document to your teacher?')">
+                                    <i class="fas fa-paper-plane mr-1"></i> Turn In Assignment
+                                </button>
+                            </div>
+                        </form>
+                        {% else %}
+                        <!-- Read-Only Submitted Document Preview -->
+                        <h5 class="font-weight-bold text-dark mb-2">{{ submission.document_title|default:assignment.title }}</h5>
+                        {% if submission.document_content %}
+                        <div class="border rounded p-3 bg-white mb-3">
+                            {{ submission.document_content|safe }}
+                        </div>
+                        {% endif %}
+                        {% if submission.uploaded_file %}
+                        <div class="mb-3">
+                            <a href="{{ submission.uploaded_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download mr-1"></i> Download Attached File ({{ submission.uploaded_file.name }})
+                            </a>
+                        </div>
+                        {% endif %}
+                        {% if submission.status == 'TURNED_IN' or submission.status == 'LATE' %}
+                        <form method="post" onsubmit="return confirm('Unsubmit this assignment so you can make changes?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="unsubmit">
+                            <button type="submit" class="btn btn-warning btn-block font-weight-bold text-dark">
+                                <i class="fas fa-undo mr-1"></i> Unsubmit to Edit Document
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Private Comments -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h3 class="card-title mb-0 text-dark font-weight-bold">
+                            <i class="fas fa-lock mr-2 text-secondary"></i> Private Comments with {{ assignment.staff.admin.get_full_name }}
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        {% for pc in private_comments %}
+                        <div class="border-bottom pb-2 mb-2">
+                            <div class="d-flex justify-content-between small">
+                                <strong>{{ pc.author.get_full_name|default:pc.author.email }}</strong>
+                                <span class="text-muted">{{ pc.created_at|date:"M d, H:i" }}</span>
+                            </div>
+                            <div class="small mt-1">{{ pc.body }}</div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted small mb-2">No private comments yet.</p>
+                        {% endfor %}
+                        <form method="post" class="mt-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="private_comment">
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="body" class="form-control" placeholder="Send a private note to your teacher..." required>
+                                <div class="input-group-append">
+                                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(function () {
+    if ($("#docEditor").length && $.fn.summernote) {
+        $("#docEditor").summernote({
+            height: 280,
+            placeholder: "Write your assignment document here...",
+            toolbar: [
+                ["style", ["style"]],
+                ["font", ["bold", "italic", "underline", "clear"]],
+                ["para", ["ul", "ol", "paragraph"]],
+                ["table", ["table"]],
+                ["insert", ["link"]],
+                ["view", ["fullscreen"]]
+            ]
+        });
+    }
+});
+</script>
+{% endblock custom_js %}

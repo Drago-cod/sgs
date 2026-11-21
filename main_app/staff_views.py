@@ -1012,25 +1012,169 @@ def staff_attendance_checkin(request):
 
 
 def staff_assignments(request):
-    """Subject Teachers & Class Teachers manage subject assessments & assignments."""
+    """Subject Teachers & Class Teachers create and manage Google Classroom assignments."""
     staff = get_object_or_404(Staff, admin=request.user)
-    form = AssignmentForm(request.POST or None, staff=staff)
+    form = AssignmentForm(request.POST or None, request.FILES or None, staff=staff)
     if request.method == 'POST':
         if form.is_valid():
             assignment = form.save(commit=False)
             assignment.staff = staff
             assignment.save()
+            # Notify students in that class
+            for stu in Student.objects.filter(course=assignment.subject.course):
+                NotificationStudent.objects.create(
+                    student=stu,
+                    message=f"New assignment posted in {assignment.subject.name}: '{assignment.title}' (Due {assignment.due_date.strftime('%b %d, %Y')}).",
+                )
             messages.success(request, f"Assignment '{assignment.title}' published for {assignment.subject.name}.")
             return redirect('staff_assignments')
         messages.error(request, "Please check the assignment form fields.")
 
-    assignments = Assignment.objects.filter(staff=staff).select_related('subject', 'subject__course')
+    assignments_qs = Assignment.objects.filter(staff=staff).select_related('subject', 'subject__course')
+    assignment_rows = []
+    for item in assignments_qs:
+        total_students = Student.objects.filter(course=item.subject.course).count()
+        subs = list(AssignmentSubmission.objects.filter(assignment=item))
+        turned_in = sum(1 for s in subs if s.status in ("TURNED_IN", "LATE"))
+        graded = sum(1 for s in subs if s.status == "GRADED")
+        assigned_pending = max(0, total_students - turned_in - graded)
+        assignment_rows.append({
+            "assignment": item,
+            "total_students": total_students,
+            "turned_in": turned_in,
+            "graded": graded,
+            "pending": assigned_pending,
+        })
+
     context = {
-        'page_title': 'Subject Assignments & Assessments',
+        'page_title': 'Classroom Assignments & Assessments',
         'form': form,
-        'assignments': assignments,
+        'assignment_rows': assignment_rows,
     }
     return render(request, 'staff_template/staff_assignments.html', context)
+
+
+def staff_assignment_submissions(request, assignment_id):
+    """Google Classroom-style submission review & grading hub for teachers."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    assignment = get_object_or_404(
+        Assignment.objects.select_related('subject', 'subject__course'),
+        id=assignment_id,
+        staff=staff,
+    )
+    today = timezone.localdate()
+
+    if request.method == "POST":
+        action = request.POST.get("action", "")
+
+        if action == "class_comment":
+            body = request.POST.get("body", "").strip()
+            if body:
+                AssignmentComment.objects.create(
+                    assignment=assignment,
+                    submission=None,
+                    author=request.user,
+                    body=body,
+                )
+                messages.success(request, "Class announcement/comment posted.")
+            return redirect("staff_assignment_submissions", assignment_id=assignment.id)
+
+        if action == "private_comment":
+            sub_id = request.POST.get("submission_id")
+            body = request.POST.get("body", "").strip()
+            sub = get_object_or_404(AssignmentSubmission, id=sub_id, assignment=assignment)
+            if body:
+                AssignmentComment.objects.create(
+                    assignment=assignment,
+                    submission=sub,
+                    author=request.user,
+                    body=body,
+                )
+                messages.success(request, f"Private comment sent to {sub.student.admin.get_full_name()}.")
+            return redirect("staff_assignment_submissions", assignment_id=assignment.id)
+
+        if action in ("grade", "return_revision"):
+            sub_id = request.POST.get("submission_id")
+            sub = get_object_or_404(AssignmentSubmission, id=sub_id, assignment=assignment)
+            feedback_text = request.POST.get("teacher_feedback", "").strip()
+            score_raw = request.POST.get("score", "").strip()
+
+            if action == "grade":
+                try:
+                    score_val = float(score_raw)
+                    if score_val < 0 or score_val > assignment.max_score:
+                        messages.error(request, f"Score must be between 0 and {assignment.max_score}.")
+                        return redirect("staff_assignment_submissions", assignment_id=assignment.id)
+                except ValueError:
+                    messages.error(request, "Please enter a valid numeric score.")
+                    return redirect("staff_assignment_submissions", assignment_id=assignment.id)
+                sub.score = score_val
+                sub.teacher_feedback = feedback_text
+                sub.status = "GRADED"
+                sub.graded_by = request.user
+                sub.graded_at = timezone.now()
+                sub.save()
+                NotificationStudent.objects.create(
+                    student=sub.student,
+                    message=f"Your assignment '{assignment.title}' ({assignment.subject.name}) was graded: {score_val:.1f}/{assignment.max_score:.0f}.",
+                )
+                messages.success(request, f"Graded and returned {sub.student.admin.get_full_name()}'s work ({score_val:.1f}/{assignment.max_score:.0f}).")
+            else:
+                sub.teacher_feedback = feedback_text
+                sub.status = "RETURNED"
+                sub.graded_by = request.user
+                sub.graded_at = timezone.now()
+                sub.save()
+                NotificationStudent.objects.create(
+                    student=sub.student,
+                    message=f"Your assignment '{assignment.title}' ({assignment.subject.name}) was returned for revision. Check teacher feedback.",
+                )
+                messages.info(request, f"Returned {sub.student.admin.get_full_name()}'s assignment for revision.")
+            return redirect("staff_assignment_submissions", assignment_id=assignment.id)
+
+    students = Student.objects.filter(course=assignment.subject.course).select_related("admin").order_by("admin__last_name")
+    subs_by_student = {
+        s.student_id: s
+        for s in AssignmentSubmission.objects.filter(assignment=assignment).prefetch_related("private_comments__author")
+    }
+
+    student_rows = []
+    stats = {"turned_in": 0, "graded": 0, "assigned": 0, "missing": 0}
+    for stu in students:
+        sub = subs_by_student.get(stu.id)
+        if sub:
+            state = sub.status
+        else:
+            state = "MISSING" if assignment.due_date < today else "ASSIGNED"
+
+        if state in ("TURNED_IN", "LATE"):
+            stats["turned_in"] += 1
+        elif state == "GRADED":
+            stats["graded"] += 1
+        elif state == "MISSING":
+            stats["missing"] += 1
+        else:
+            stats["assigned"] += 1
+
+        student_rows.append({
+            "student": stu,
+            "submission": sub,
+            "state": state,
+            "private_comments": list(sub.private_comments.all()) if sub else [],
+        })
+
+    class_comments = AssignmentComment.objects.filter(
+        assignment=assignment, submission__isnull=True
+    ).select_related("author")
+
+    context = {
+        "page_title": f"Submissions — {assignment.title}",
+        "assignment": assignment,
+        "student_rows": student_rows,
+        "stats": stats,
+        "class_comments": class_comments,
+    }
+    return render(request, "staff_template/staff_assignment_submissions.html", context)
 
 
 @require_POST

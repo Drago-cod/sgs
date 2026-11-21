@@ -2,6 +2,7 @@ from datetime import date, time, timedelta
 from decimal import Decimal
 import json
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import reverse
 
@@ -13,6 +14,8 @@ from .ai_attendance import (
 from .models import (
     AIAttendanceNotification,
     Assignment,
+    AssignmentComment,
+    AssignmentSubmission,
     Attendance,
     AttendanceReport,
     Course,
@@ -716,3 +719,101 @@ class SixUserRolesTests(TestCase):
         self.assertTrue(perf.acknowledged_by_teacher)
         self.assertEqual(perf.teacher_response, "Thank you, I will post rubrics on Mondays.")
         self.assertEqual(self.client.get(reverse("staff_performance_feedback")).status_code, 200)
+
+    def test_google_classroom_assignment_document_workflow(self):
+        # 1. Subject teacher publishes assignment with topic & late-submission allowed
+        self.client.force_login(self.subject_teacher_user)
+        create_resp = self.client.post(
+            reverse("staff_assignments"),
+            {
+                "title": "Photosynthesis Essay",
+                "subject": self.subject.id,
+                "topic": "Unit 2: Plant Biology",
+                "description": "Write a 500-word essay explaining photosynthesis.",
+                "due_date": "2026-12-05",
+                "max_score": "50",
+                "allow_late_submission": "on",
+            },
+        )
+        self.assertEqual(create_resp.status_code, 302)
+        assignment = Assignment.objects.get(title="Photosynthesis Essay")
+
+        # 2. Student opens workspace, saves draft, then turns in document + file attachment
+        self.client.force_login(self.student_user)
+        ws_url = reverse("student_assignment_workspace", args=[assignment.id])
+        self.assertEqual(self.client.get(ws_url).status_code, 200)
+
+        self.client.post(
+            ws_url,
+            {
+                "action": "save_draft",
+                "document_title": "My Photosynthesis Report",
+                "document_content": "<p>Plants convert sunlight into chemical energy.</p>",
+            },
+        )
+        sub = AssignmentSubmission.objects.get(assignment=assignment, student=self.student)
+        self.assertEqual(sub.status, "DRAFT")
+
+        # Turn in with uploaded document file
+        sample_doc = SimpleUploadedFile("essay.txt", b"Photosynthesis full report", content_type="text/plain")
+        self.client.post(
+            ws_url,
+            {
+                "action": "turn_in",
+                "document_title": "My Photosynthesis Report (Final)",
+                "document_content": "<h3>Photosynthesis</h3><p>Chloroplasts absorb light energy.</p>",
+                "uploaded_file": sample_doc,
+            },
+        )
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "TURNED_IN")
+        self.assertIsNotNone(sub.turned_in_at)
+        self.assertTrue(bool(sub.uploaded_file))
+
+        # Student posts class comment & private comment
+        self.client.post(ws_url, {"action": "class_comment", "body": "Should we include diagrams?"})
+        self.client.post(ws_url, {"action": "private_comment", "body": "Attached my essay!"})
+        self.assertEqual(AssignmentComment.objects.filter(assignment=assignment).count(), 2)
+
+        # Student can unsubmit and re-turn in before grading
+        self.client.post(ws_url, {"action": "unsubmit"})
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "DRAFT")
+
+        self.client.post(
+            ws_url,
+            {
+                "action": "turn_in",
+                "document_title": "My Photosynthesis Report (Revised)",
+                "document_content": "<h3>Photosynthesis</h3><p>Updated with Calvin cycle details.</p>",
+            },
+        )
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "TURNED_IN")
+
+        # 3. Teacher sees turned-in submission, reviews document, and grades & returns it
+        self.client.force_login(self.subject_teacher_user)
+        sub_hub_url = reverse("staff_assignment_submissions", args=[assignment.id])
+        hub_resp = self.client.get(sub_hub_url)
+        self.assertEqual(hub_resp.status_code, 200)
+        self.assertContains(hub_resp, "My Photosynthesis Report (Revised)")
+
+        self.client.post(
+            sub_hub_url,
+            {
+                "action": "grade",
+                "submission_id": sub.id,
+                "score": "46",
+                "teacher_feedback": "Excellent explanation of the Calvin cycle!",
+            },
+        )
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "GRADED")
+        self.assertEqual(sub.score, 46.0)
+
+        # 4. Official printable JASS document sheet includes school logo, name, content & grade
+        doc_resp = self.client.get(reverse("assignment_submission_document", args=[sub.id]))
+        self.assertEqual(doc_resp.status_code, 200)
+        self.assertContains(doc_resp, "JUBA ADVENTIST SECONDARY SCHOOL")
+        self.assertContains(doc_resp, "logo.jpeg")
+        self.assertContains(doc_resp, "46.0")

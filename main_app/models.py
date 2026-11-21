@@ -577,9 +577,15 @@ class Assignment(models.Model):
     title = models.CharField(max_length=200)
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="assignments")
     staff = models.ForeignKey(Staff, on_delete=models.CASCADE, related_name="assignments")
+    topic = models.CharField(max_length=100, blank=True, default="")
     description = models.TextField()
+    attachment = models.FileField(
+        upload_to="assignments/materials/", blank=True, null=True
+    )
     due_date = models.DateField()
     max_score = models.FloatField(default=100.0)
+    allow_late_submission = models.BooleanField(default=True)
+    is_published = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -588,6 +594,71 @@ class Assignment(models.Model):
 
     def __str__(self):
         return f"{self.title} ({self.subject.name})"
+
+
+class AssignmentSubmission(models.Model):
+    STATUS_CHOICES = (
+        ("DRAFT", "Draft Saved"),
+        ("TURNED_IN", "Turned In"),
+        ("LATE", "Turned In Late"),
+        ("GRADED", "Graded & Returned"),
+        ("RETURNED", "Returned for Revision"),
+    )
+
+    assignment = models.ForeignKey(
+        Assignment, on_delete=models.CASCADE, related_name="submissions"
+    )
+    student = models.ForeignKey(
+        Student, on_delete=models.CASCADE, related_name="assignment_submissions"
+    )
+    document_title = models.CharField(max_length=200, blank=True, default="")
+    document_content = models.TextField(blank=True, default="")
+    uploaded_file = models.FileField(
+        upload_to="assignments/submissions/", blank=True, null=True
+    )
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default="DRAFT")
+    turned_in_at = models.DateTimeField(null=True, blank=True)
+    score = models.FloatField(null=True, blank=True)
+    teacher_feedback = models.TextField(blank=True, default="")
+    graded_by = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="graded_submissions"
+    )
+    graded_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-turned_in_at", "-updated_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment", "student"],
+                name="unique_submission_per_student_assignment",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.student} - {self.assignment.title} ({self.get_status_display()})"
+
+
+class AssignmentComment(models.Model):
+    assignment = models.ForeignKey(
+        Assignment, on_delete=models.CASCADE, related_name="comments"
+    )
+    submission = models.ForeignKey(
+        AssignmentSubmission, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="private_comments"
+    )
+    author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        scope = "Private" if self.submission_id else "Class"
+        return f"[{scope}] {self.author}: {self.body[:40]}"
 
 
 class StudentWelfareRecord(models.Model):
