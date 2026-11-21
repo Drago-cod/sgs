@@ -1,4 +1,37 @@
 {% load static %}
+<style>
+.school-doc-watermark-layer {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 360px;
+    max-width: 60vw;
+    opacity: 0.07;
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+.school-doc-header,
+.school-doc-header ~ * {
+    position: relative;
+    z-index: 1;
+}
+@media print {
+    .school-doc-watermark-layer {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 380px;
+        opacity: 0.08 !important;
+        z-index: 0;
+    }
+}
+</style>
+<img src="{% static 'img/logo.jpeg' %}" alt="" aria-hidden="true" class="school-doc-watermark-layer">
 <div class="school-doc-header" style="display:flex;align-items:center;justify-content:center;gap:20px;border-bottom:3px solid #1e3a5f;padding-bottom:16px;margin-bottom:20px;text-align:center;">
     <img src="{% static 'img/logo.jpeg' %}" alt="Juba Adventist Secondary School Logo"
          style="height:82px;width:82px;object-fit:contain;border-radius:8px;flex-shrink:0;">

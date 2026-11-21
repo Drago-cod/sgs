@@ -43,7 +43,10 @@ from django.utils.dateparse import parse_date
 
 def login_page(request):
     if request.user.is_authenticated:
-        return redirect(get_user_home_url(request.user))
+        target = get_user_home_url(request.user)
+        if target != reverse('login_page'):
+            return redirect(target)
+        logout(request)
     return render(request, 'main_app/login.html')
 
 

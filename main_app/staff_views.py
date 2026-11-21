@@ -40,14 +40,15 @@ from twilio.rest import Client
 logger = logging.getLogger(__name__)
 
 def staff_home(request):
-    staff = Staff.objects.filter(admin=request.user).first()
-    if not staff:
+    role = str(getattr(request.user, 'user_type', ''))
+    if role in ('2', '6'):
+        staff, _ = Staff.objects.get_or_create(
+            admin=request.user,
+            defaults={'class_teacher': role == '6'},
+        )
+    else:
         messages.error(request, "Access denied. Please log in with a teacher/staff account.")
-        if getattr(request.user, 'user_type', None) == '1':
-            return redirect('admin_home')
-        elif getattr(request.user, 'user_type', None) == '3':
-            return redirect('student_home')
-        return redirect('login_page')
+        return redirect(get_user_home_url(request.user))
     total_students = Student.objects.filter(course=staff.course).count()
     total_leave = LeaveReportStaff.objects.filter(staff=staff).count()
     subjects = Subject.objects.filter(staff=staff)
@@ -550,10 +551,18 @@ def send_result_sms(request, student_id):
 
 #Another newest view that has been added
 def class_teacher_dashboard(request):
-    staff = Staff.objects.filter(admin=request.user).first()
-    if not staff:
+    role = str(getattr(request.user, 'user_type', ''))
+    if role in ('2', '6'):
+        staff, _ = Staff.objects.get_or_create(
+            admin=request.user,
+            defaults={'class_teacher': role == '6'},
+        )
+        if role == '6' and not staff.class_teacher:
+            staff.class_teacher = True
+            staff.save(update_fields=['class_teacher', 'updated_at'])
+    else:
         messages.error(request, "Access denied. Please log in with a teacher account.")
-        return redirect('admin_home' if getattr(request.user, 'user_type', None) == '1' else 'login_page')
+        return redirect(get_user_home_url(request.user))
     if not staff.class_teacher:
         messages.error(request, "You are not authorized to access this page")
         return redirect('staff_home')
@@ -842,8 +851,32 @@ def download_student_result(request, student_id):
     elements.append(Paragraph("Class Teacher's Comment:", styles['Heading2']))
     elements.append(Paragraph(teacher_comment or "No comment provided.", comment_style))
     
-    # Build PDF
-    doc.build(elements)
+    # Build PDF with centered school logo watermark on every page
+    def _draw_logo_watermark(canvas, doc_obj):
+        if logo_path and os.path.exists(logo_path):
+            canvas.saveState()
+            try:
+                canvas.setFillAlpha(0.08)
+            except Exception:
+                pass
+            page_w, page_h = letter
+            wm_size = 4.2 * inch
+            canvas.drawImage(
+                logo_path,
+                (page_w - wm_size) / 2.0,
+                (page_h - wm_size) / 2.0,
+                width=wm_size,
+                height=wm_size,
+                preserveAspectRatio=True,
+                mask='auto',
+            )
+            canvas.restoreState()
+
+    doc.build(
+        elements,
+        onFirstPage=_draw_logo_watermark,
+        onLaterPages=_draw_logo_watermark,
+    )
     return response
 
 

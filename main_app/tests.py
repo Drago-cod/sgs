@@ -490,6 +490,7 @@ class SixUserRolesTests(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
             self.assertContains(resp, "logo.jpeg")
+            self.assertContains(resp, "school-doc-watermark-layer")
 
         # DOS printable academic results & timetable
         self.client.force_login(self.dos)

@@ -20,8 +20,10 @@ from .models import *
 
 
 def student_home(request):
-    student = Student.objects.filter(admin=request.user).first()
-    if not student:
+    role = str(getattr(request.user, 'user_type', ''))
+    if role == '3':
+        student, _ = Student.objects.get_or_create(admin=request.user)
+    else:
         messages.error(request, "Access denied. Please log in with a student account.")
         return redirect(get_user_home_url(request.user))
     total_subject = Subject.objects.filter(course=student.course).count()
