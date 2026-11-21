@@ -3,10 +3,21 @@
 
 {% block custom_css %}
 <style>
-@media print {
-    .main-sidebar, .main-header, .main-footer, .no-print, .content-header { display: none !important; }
-    .content-wrapper { margin-left: 0 !important; background: #fff !important; }
-}
+    @media print {
+
+        .main-sidebar,
+        .main-header,
+        .main-footer,
+        .no-print,
+        .content-header {
+            display: none !important;
+        }
+
+        .content-wrapper {
+            margin-left: 0 !important;
+            background: #fff !important;
+        }
+    }
 </style>
 {% endblock custom_css %}
 
@@ -21,104 +32,162 @@
 
         <div class="card p-4 mb-4">
             {% now "F j, Y" as generated_date %}
-            {% include "main_app/document_header.html" with doc_title="School Financial Summary Report" doc_subtitle="Generated "|add:generated_date %}
+            {% include "main_app/document_header.html" with doc_title="School Financial Summary Report"
+            doc_subtitle="Generated "|add:generated_date %}
 
-        <div class="row mb-4">
-            <div class="col-md-3 col-6 mb-2">
-                <div class="card p-3 text-center">
-                    <small class="text-muted">Total Expected</small>
-                    <h4 class="font-weight-bold text-primary mb-0">{{ total_expected|floatformat:2 }}</h4>
+            <div class="row mb-4">
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card p-3 text-center">
+                        <small class="text-muted">Total Expected</small>
+                        <h4 class="font-weight-bold text-primary mb-0">{{ total_expected|floatformat:2 }}</h4>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3 col-6 mb-2">
-                <div class="card p-3 text-center">
-                    <small class="text-muted">Total Collected</small>
-                    <h4 class="font-weight-bold text-success mb-0">{{ total_collected|floatformat:2 }}</h4>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card p-3 text-center">
+                        <small class="text-muted">Total Collected</small>
+                        <h4 class="font-weight-bold text-success mb-0">{{ total_collected|floatformat:2 }}</h4>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3 col-6 mb-2">
-                <div class="card p-3 text-center">
-                    <small class="text-muted">Outstanding</small>
-                    <h4 class="font-weight-bold text-danger mb-0">{{ total_outstanding|floatformat:2 }}</h4>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card p-3 text-center">
+                        <small class="text-muted">Outstanding</small>
+                        <h4 class="font-weight-bold text-danger mb-0">{{ total_outstanding|floatformat:2 }}</h4>
+                    </div>
                 </div>
-            </div>
-            <div class="col-md-3 col-6 mb-2">
-                <div class="card p-3 text-center">
-                    <small class="text-muted">Collection Rate</small>
-                    <h4 class="font-weight-bold text-info mb-0">{{ collection_rate }}%</h4>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header bg-gradient-navy">
-                <h3 class="card-title mb-0">Collections by Class</h3>
-            </div>
-            <div class="card-body table-responsive p-0">
-                <table class="table table-bordered mb-0">
-                    <thead>
-                        <tr><th>Class</th><th>Students</th><th>Expected</th><th>Collected</th><th>Outstanding</th><th>Rate</th></tr>
-                    </thead>
-                    <tbody>
-                        {% for cr in class_reports %}
-                        <tr>
-                            <td class="font-weight-bold">{{ cr.course.name }}</td>
-                            <td>{{ cr.student_count }}</td>
-                            <td>{{ cr.expected|floatformat:2 }}</td>
-                            <td class="text-success font-weight-bold">{{ cr.collected|floatformat:2 }}</td>
-                            <td class="text-danger">{{ cr.outstanding|floatformat:2 }}</td>
-                            <td>{{ cr.rate }}%</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="col-lg-5 mb-3">
-                <div class="card">
-                    <div class="card-header bg-gradient-teal"><h3 class="card-title mb-0">By Payment Method</h3></div>
-                    <div class="card-body table-responsive p-0">
-                        <table class="table mb-0">
-                            <thead><tr><th>Method</th><th>Transactions</th><th>Total</th></tr></thead>
-                            <tbody>
-                                {% for mb in method_breakdown %}
-                                <tr>
-                                    <td>{{ mb.label }}</td>
-                                    <td>{{ mb.count }}</td>
-                                    <td class="font-weight-bold">{{ mb.total|floatformat:2 }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card p-3 text-center">
+                        <small class="text-muted">Collection Rate</small>
+                        <h4 class="font-weight-bold text-info mb-0">{{ collection_rate }}%</h4>
                     </div>
                 </div>
             </div>
 
-            <div class="col-lg-7 mb-3">
-                <div class="card">
-                    <div class="card-header bg-gradient-amber"><h3 class="card-title mb-0 text-dark">Outstanding Student Balances</h3></div>
-                    <div class="card-body table-responsive p-0">
-                        <table class="table mb-0">
-                            <thead><tr><th>Student</th><th>Class</th><th>Paid</th><th>Balance Due</th></tr></thead>
-                            <tbody>
-                                {% for row in defaulters %}
-                                <tr>
-                                    <td class="font-weight-bold">{{ row.student.admin.get_full_name }}</td>
-                                    <td>{{ row.student.course.name|default:"—" }}</td>
-                                    <td>{{ row.paid|floatformat:2 }}</td>
-                                    <td class="text-danger font-weight-bold">{{ row.balance|floatformat:2 }}</td>
-                                </tr>
-                                {% empty %}
-                                <tr><td colspan="4" class="text-center py-3 text-success">All students are cleared!</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+            <div class="card mb-4">
+                <div class="card-header bg-gradient-navy">
+                    <h3 class="card-title mb-0">Collections by Class</h3>
+                </div>
+                <div class="card-body table-responsive p-0">
+                    <table class="table table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Students</th>
+                                <th>Expected</th>
+                                <th>Collected</th>
+                                <th>Outstanding</th>
+                                <th>Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cr in class_reports %}
+                            <tr>
+                                <td class="font-weight-bold">{{ cr.course.name }}</td>
+                                <td>{{ cr.student_count }}</td>
+                                <td>{{ cr.expected|floatformat:2 }}</td>
+                                <td class="text-success font-weight-bold">{{ cr.collected|floatformat:2 }}</td>
+                                <td class="text-danger">{{ cr.outstanding|floatformat:2 }}</td>
+                                <td>{{ cr.rate }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-5 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-gradient-teal">
+                            <h3 class="card-title mb-0">By Payment Method</h3>
+                        </div>
+                        <div class="card-body table-responsive p-0">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Method</th>
+                                        <th>Transactions</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for mb in method_breakdown %}
+                                    <tr>
+                                        <td>{{ mb.label }}</td>
+                                        <td>{{ mb.count }}</td>
+                                        <td class="font-weight-bold">{{ mb.total|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-7 mb-3">
+                    <div class="card">
+                        <div class="card-header bg-gradient-amber">
+                            <h3 class="card-title mb-0 text-dark">Outstanding Student Balances</h3>
+                        </div>
+                        <div class="card-body table-responsive p-0">
+                            <table class="table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Class</th>
+                                        <th>Paid</th>
+                                        <th>Balance Due</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in defaulters %}
+                                    <tr>
+                                        <td class="font-weight-bold">{{ row.student.admin.get_full_name }}</td>
+                                        <td>{{ row.student.course.name|default:"—" }}</td>
+                                        <td>{{ row.paid|floatformat:2 }}</td>
+                                        <td class="text-danger font-weight-bold">{{ row.balance|floatformat:2 }}</td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            {% if total_students_count == 0 %}
+                                            <span class="text-muted">No students are registered yet.</span>
+                                            {% elif not has_fee_structures or billed_students_count == 0 %}
+                                            <span class="text-warning font-weight-bold">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                No fee structures configured for registered students yet.
+                                            </span>
+                                            <div class="mt-2 no-print">
+                                                <a href="{% url 'bursar_fee_structures' %}"
+                                                    class="btn btn-xs btn-primary">
+                                                    Configure Fee Structures
+                                                </a>
+                                            </div>
+                                            {% elif unbilled_students_count > 0 %}
+                                            <span class="text-success font-weight-bold">
+                                                All {{ cleared_students_count }} billed student{{
+                                                cleared_students_count|pluralize }} have cleared their fees.
+                                            </span>
+                                            <small class="text-muted d-block mt-1">
+                                                {{ unbilled_students_count }} student{{
+                                                unbilled_students_count|pluralize }} are in classes without a fee
+                                                structure yet.
+                                            </small>
+                                            {% else %}
+                                            <span class="text-success font-weight-bold">
+                                                <i class="fas fa-check-circle mr-1"></i>
+                                                All {{ cleared_students_count }} student{{
+                                                cleared_students_count|pluralize }} have cleared their fees.
+                                            </span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </div>
     </div>
 </section>

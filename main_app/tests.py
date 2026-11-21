@@ -380,6 +380,12 @@ class SixUserRolesTests(TestCase):
             fetch_redirect_response=False,
         )
 
+        # Before fee structures exist, report should NOT falsely say all students are cleared
+        empty_report = self.client.get(reverse("bursar_financial_reports"))
+        self.assertEqual(empty_report.status_code, 200)
+        self.assertContains(empty_report, "No fee structures configured")
+        self.assertNotContains(empty_report, "All students are cleared")
+
         # Create fee structure & payment
         fs_resp = self.client.post(
             reverse("bursar_fee_structures"),

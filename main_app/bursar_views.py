@@ -232,6 +232,9 @@ def bursar_financial_reports(request):
         })
 
     defaulters = [r for r in summary["ledger"] if r["balance"] > 0]
+    billed_students_count = sum(1 for r in summary["ledger"] if r["expected"] > 0)
+    unbilled_students_count = sum(1 for r in summary["ledger"] if r["expected"] <= 0)
+    cleared_students_count = sum(1 for r in summary["ledger"] if r["status"] == "PAID")
 
     context = {
         "page_title": "Financial Reports",
@@ -243,6 +246,11 @@ def bursar_financial_reports(request):
         "class_reports": class_reports,
         "method_breakdown": method_breakdown,
         "defaulters": defaulters,
+        "has_fee_structures": FeeStructure.objects.exists(),
+        "total_students_count": len(summary["ledger"]),
+        "billed_students_count": billed_students_count,
+        "unbilled_students_count": unbilled_students_count,
+        "cleared_students_count": cleared_students_count,
     }
     return render(request, "bursar_template/financial_reports.html", context)
 
