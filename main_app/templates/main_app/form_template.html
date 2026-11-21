@@ -1,15 +1,30 @@
 <form role="form" method="POST" enctype="multipart/form-data">
   {% csrf_token %}
   <div class="card-body">
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+    {% endif %}
     {% for field in form %}
-    <div class="form-group">{{field.errors}} {{field.label_tag}} {{field}}</div>
+    <div class="form-group">
+      <label for="{{ field.id_for_label }}" class="font-weight-bold text-dark">
+        {{ field.label }}{% if field.field.required %} <span class="text-danger">*</span>{% endif %}
+      </label>
+      {{ field }}
+      {% if field.help_text %}
+      <small class="form-text text-muted">{{ field.help_text }}</small>
+      {% endif %}
+      {% if field.errors %}
+      <div class="text-danger small mt-1">{{ field.errors }}</div>
+      {% endif %}
+    </div>
     {% endfor %}
   </div>
   <!-- /.card-body -->
 
-  <div class="card-footer">
-    <button type="submit" class="btn btn-primary btn-block">
-      {% if button_text %} {{button_text}} {% else %} Submit {% endif %}
+  <div class="card-footer bg-white border-top">
+    <button type="submit" class="btn btn-primary btn-block font-weight-bold">
+      <i class="fas fa-save mr-1"></i>
+      {% if button_text %} {{ button_text }} {% else %} Submit {% endif %}
     </button>
   </div>
 </form>

@@ -308,7 +308,7 @@
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
                                 <a href="{% url 'student_view_result' %}" class="quick-action-btn qa-btn-navy">
                                     <div class="qa-icon qa-navy">
                                         <i class="fas fa-poll-h"></i>
@@ -316,7 +316,7 @@
                                     <span>View Results</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
                                 <a href="{% url 'student_view_attendance' %}" class="quick-action-btn qa-btn-teal">
                                     <div class="qa-icon qa-teal">
                                         <i class="fas fa-calendar-alt"></i>
@@ -324,20 +324,36 @@
                                     <span>View Attendance</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_timetable' %}" class="quick-action-btn qa-btn-amber">
+                                    <div class="qa-icon qa-amber">
+                                        <i class="fas fa-calendar-week"></i>
+                                    </div>
+                                    <span>Class Timetable</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_assignments' %}" class="quick-action-btn qa-btn-green">
+                                    <div class="qa-icon qa-green">
+                                        <i class="fas fa-tasks"></i>
+                                    </div>
+                                    <span>My Assignments</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
+                                <a href="{% url 'student_messages' %}" class="quick-action-btn qa-btn-navy">
+                                    <div class="qa-icon qa-navy">
+                                        <i class="fas fa-envelope"></i>
+                                    </div>
+                                    <span>Class Messages</span>
+                                </a>
+                            </div>
+                            <div class="col-lg-4 col-md-6 col-sm-6 mb-3">
                                 <a href="{% url 'student_apply_leave' %}" class="quick-action-btn qa-btn-amber">
                                     <div class="qa-icon qa-amber">
                                         <i class="fas fa-plane-departure"></i>
                                     </div>
                                     <span>Request Leave</span>
-                                </a>
-                            </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'student_feedback' %}" class="quick-action-btn qa-btn-green">
-                                    <div class="qa-icon qa-green">
-                                        <i class="fas fa-comment-dots"></i>
-                                    </div>
-                                    <span>Send Feedback</span>
                                 </a>
                             </div>
                         </div>
