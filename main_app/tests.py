@@ -850,3 +850,86 @@ class SixUserRolesTests(TestCase):
                 submission=sub, author=self.subject_teacher_user, body="Looks great now!"
             ).exists()
         )
+
+    def test_ai_assignment_detector_warns_and_auto_rejects_forced_submissions(self):
+        assignment = Assignment.objects.create(
+            title="Climate Change Essay",
+            subject=self.subject,
+            staff=self.subject_teacher,
+            description="Explain the causes and impacts of climate change in your own words.",
+            due_date=date(2026, 12, 10),
+            max_score=50.0,
+        )
+        self.client.force_login(self.student_user)
+        check_url = reverse("student_check_assignment_ai", args=[assignment.id])
+        ws_url = reverse("student_assignment_workspace", args=[assignment.id])
+
+        ai_essay = (
+            "Certainly! Here is a comprehensive essay on climate change. "
+            "In today's fast-paced world, it is crucial to understand the multifaceted nature "
+            "of climate change, which plays a pivotal role in navigating the complexities of our planet. "
+            "Furthermore, moreover, additionally, consequently, it is important to note that "
+            "delving into a myriad of factors underscores the importance of fostering a deeper understanding. "
+            "In conclusion, it is evident that climate change cannot be overstated."
+        )
+
+        # 1. Pre-submission live AI check clearly warns student before submitting
+        check_resp = self.client.post(
+            check_url,
+            {"document_content": ai_essay, "paste_ratio": "0.95", "paste_events": "1"},
+        )
+        self.assertEqual(check_resp.status_code, 200)
+        payload = check_resp.json()
+        self.assertTrue(payload["is_flagged"])
+        self.assertEqual(payload["verdict"], "AI_OR_COPY_PASTE_DETECTED")
+        self.assertGreaterEqual(payload["ai_score"], 60.0)
+        self.assertTrue(len(payload["reasons"]) >= 2)
+
+        # 2. Student forces submission anyway -> AUTOMATICALLY REJECTED
+        force_resp = self.client.post(
+            ws_url,
+            {
+                "action": "turn_in",
+                "document_title": "Climate Change",
+                "document_content": ai_essay,
+                "paste_ratio": "0.95",
+                "paste_events": "1",
+            },
+            follow=True,
+        )
+        self.assertEqual(force_resp.status_code, 200)
+        sub = AssignmentSubmission.objects.get(assignment=assignment, student=self.student)
+        self.assertEqual(sub.status, "REJECTED_AI")
+        self.assertTrue(sub.ai_flagged)
+        self.assertEqual(sub.ai_rejection_count, 1)
+        self.assertContains(force_resp, "Submission Automatically Rejected")
+
+        # 3. Student rewrites in genuine original words -> ACCEPTED cleanly
+        original_essay = (
+            "Last rainy season our garden flooded twice and my uncle said the weather in Juba "
+            "has become harder to predict than when he was young. Cutting down trees for charcoal "
+            "and burning fuel from cars and generators adds heat-trapping gases to the air. "
+            "At school we planted twelve neem seedlings behind the classroom block to give shade "
+            "and cool the compound."
+        )
+        ok_check = self.client.post(
+            check_url,
+            {"document_content": original_essay, "paste_ratio": "0.0", "paste_events": "0"},
+        ).json()
+        self.assertFalse(ok_check["is_flagged"])
+        self.assertEqual(ok_check["verdict"], "ORIGINAL")
+
+        submit_ok = self.client.post(
+            ws_url,
+            {
+                "action": "turn_in",
+                "document_title": "Climate Change in Juba",
+                "document_content": original_essay,
+                "paste_ratio": "0.0",
+                "paste_events": "0",
+            },
+        )
+        self.assertEqual(submit_ok.status_code, 302)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, "TURNED_IN")
+        self.assertFalse(sub.ai_flagged)

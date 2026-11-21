@@ -55,8 +55,16 @@
                             <small class="text-muted ml-2">{{ stu.admin.email }}</small>
                         </div>
                         <div>
+                            {% if sub %}
+                            <span class="badge {% if sub.ai_flagged %}badge-danger{% elif sub.ai_score >= 35 %}badge-warning text-dark{% else %}badge-light border text-success{% endif %} mr-1" title="AI / Copy-Paste Originality Score">
+                                <i class="fas fa-robot mr-1"></i>
+                                {% if sub.ai_flagged %}AI Detected ({{ sub.ai_score|floatformat:0 }}%){% else %}Originality OK ({{ sub.ai_score|floatformat:0 }}% AI){% endif %}
+                            </span>
+                            {% endif %}
                             {% if row.state == 'GRADED' %}
                             <span class="badge badge-success">Graded: {{ sub.score|floatformat:1 }}/{{ assignment.max_score|floatformat:0 }}</span>
+                            {% elif row.state == 'REJECTED_AI' %}
+                            <span class="badge badge-danger"><i class="fas fa-ban mr-1"></i>Auto-Rejected (AI)</span>
                             {% elif row.state == 'TURNED_IN' %}
                             <span class="badge badge-info">Turned In</span>
                             {% elif row.state == 'LATE' %}

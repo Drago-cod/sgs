@@ -40,6 +40,8 @@
                         <span class="badge badge-info p-2"><i class="fas fa-paper-plane mr-1"></i>Turned In</span>
                         {% elif row.state == 'LATE' %}
                         <span class="badge badge-warning text-dark p-2"><i class="fas fa-clock mr-1"></i>Turned In Late</span>
+                        {% elif row.state == 'REJECTED_AI' %}
+                        <span class="badge badge-danger p-2"><i class="fas fa-robot mr-1"></i>Rejected (AI / Copy-Paste: {{ sub.ai_score|floatformat:0 }}%)</span>
                         {% elif row.state == 'RETURNED' %}
                         <span class="badge badge-warning text-dark p-2"><i class="fas fa-redo mr-1"></i>Returned for Revision</span>
                         {% elif row.state == 'DRAFT' %}

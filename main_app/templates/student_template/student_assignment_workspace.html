@@ -90,6 +90,23 @@
                         <p class="mb-0 text-dark">{{ submission.teacher_feedback|default:"Great work! Graded by your teacher." }}</p>
                     </div>
                 </div>
+                {% elif submission and submission.status == 'REJECTED_AI' %}
+                <div class="alert alert-danger border-left" style="border-left: 5px solid #dc3545 !important;">
+                    <h5 class="font-weight-bold mb-1">
+                        <i class="fas fa-ban mr-1"></i> Submission Automatically Rejected — AI / Copy-Paste Detected ({{ submission.ai_score|floatformat:0 }}%)
+                    </h5>
+                    <p class="mb-2 small">
+                        Your previous attempt was automatically rejected because the AI Originality Detector identified AI-generated or copy-pasted content.
+                        Please rewrite this assignment in your own words and re-check originality before turning it in.
+                    </p>
+                    {% if submission.ai_report.reasons %}
+                    <ul class="small mb-0 pl-3">
+                        {% for reason in submission.ai_report.reasons %}
+                        <li>{{ reason }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
                 {% elif submission and submission.status == 'RETURNED' %}
                 <div class="alert alert-warning">
                     <strong><i class="fas fa-redo mr-1"></i> Returned for Revision:</strong>
@@ -111,8 +128,12 @@
 
                     <div class="card-body">
                         {% if can_edit %}
-                        <form method="post" enctype="multipart/form-data">
+                        <form method="post" enctype="multipart/form-data" id="assignmentWorkForm">
                             {% csrf_token %}
+                            <input type="hidden" name="paste_ratio" id="pasteRatioInput" value="{{ submission.paste_ratio|default:'0' }}">
+                            <input type="hidden" name="paste_events" id="pasteEventsInput" value="0">
+                            <input type="hidden" name="action" id="workActionInput" value="save_draft">
+
                             <div class="form-group">
                                 <label class="small font-weight-bold">Document Title</label>
                                 <input type="text" name="document_title" class="form-control"
@@ -122,16 +143,26 @@
 
                             <div class="form-group">
                                 <label class="small font-weight-bold">
-                                    Work on Your Document <small class="text-muted">(Rich text formatting supported)</small>
+                                    Work on Your Document <small class="text-muted">(Rich text formatting supported &middot; Originality monitored)</small>
                                 </label>
                                 <textarea name="document_content" id="docEditor" class="form-control" rows="10">{{ submission.document_content|default:'' }}</textarea>
+                            </div>
+
+                            <!-- Live AI & Copy-Paste Detection Status Box -->
+                            <div id="aiCheckBox" class="alert alert-light border mb-3" style="display:none;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <strong id="aiCheckTitle"><i class="fas fa-robot mr-1"></i> AI Originality Check</strong>
+                                    <span id="aiCheckBadge" class="badge badge-info">0%</span>
+                                </div>
+                                <p id="aiCheckSummary" class="small mb-1"></p>
+                                <ul id="aiCheckReasons" class="small mb-0 pl-3"></ul>
                             </div>
 
                             <div class="form-group">
                                 <label class="small font-weight-bold">
                                     <i class="fas fa-upload mr-1"></i> Or Attach a Document File <small class="text-muted">(PDF, DOCX, DOC, TXT, Image — optional)</small>
                                 </label>
-                                <input type="file" name="uploaded_file" class="form-control-file"
+                                <input type="file" name="uploaded_file" id="uploadedFileInput" class="form-control-file"
                                        accept=".pdf,.doc,.docx,.txt,.odt,.rtf,.png,.jpg,.jpeg">
                                 {% if submission and submission.uploaded_file %}
                                 <div class="mt-2 small">
@@ -144,15 +175,47 @@
                             </div>
 
                             <div class="d-flex flex-wrap" style="gap: 10px;">
-                                <button type="submit" name="action" value="save_draft" class="btn btn-outline-primary flex-fill font-weight-bold">
+                                <button type="button" id="checkAiBtn" class="btn btn-outline-info font-weight-bold">
+                                    <i class="fas fa-shield-alt mr-1"></i> Check Originality (AI Scan)
+                                </button>
+                                <button type="button" id="saveDraftBtn" class="btn btn-outline-primary flex-fill font-weight-bold">
                                     <i class="fas fa-save mr-1"></i> Save Draft
                                 </button>
-                                <button type="submit" name="action" value="turn_in" class="btn btn-success flex-fill font-weight-bold"
-                                        onclick="return confirm('Turn in this document to your teacher?')">
+                                <button type="button" id="turnInBtn" class="btn btn-success flex-fill font-weight-bold">
                                     <i class="fas fa-paper-plane mr-1"></i> Turn In Assignment
                                 </button>
                             </div>
                         </form>
+
+                        <!-- Pre-Submission AI Warning Modal -->
+                        <div class="modal fade" id="aiWarningModal" tabindex="-1" role="dialog" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content border-danger">
+                                    <div class="modal-header bg-danger text-white">
+                                        <h5 class="modal-title font-weight-bold">
+                                            <i class="fas fa-exclamation-triangle mr-2"></i> AI-Generated / Copy-Paste Work Detected!
+                                        </h5>
+                                        <button type="button" class="close text-white" data-dismiss="modal"><span>&times;</span></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p class="font-weight-bold text-danger mb-2" id="modalAiSummary"></p>
+                                        <ul id="modalAiReasons" class="small text-dark pl-3 mb-3"></ul>
+                                        <div class="alert alert-warning small mb-0">
+                                            <strong>Important:</strong> Submitting AI-generated or copy-pasted work is not permitted.
+                                            If you force submission anyway, the system will <strong>automatically reject</strong> your submission and notify your teacher.
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer justify-content-between">
+                                        <button type="button" class="btn btn-primary font-weight-bold" data-dismiss="modal">
+                                            <i class="fas fa-edit mr-1"></i> Go Back &amp; Rewrite in My Own Words
+                                        </button>
+                                        <button type="button" id="forceSubmitBtn" class="btn btn-outline-danger btn-sm">
+                                            Force Submit Anyway
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         {% else %}
                         <!-- Read-Only Submitted Document Preview -->
                         <h5 class="font-weight-bold text-dark mb-2">{{ submission.document_title|default:assignment.title }}</h5>
@@ -221,10 +284,87 @@
 {% block custom_js %}
 <script>
 $(function () {
+    var pastedChars = 0;
+    var pasteEvents = 0;
+
+    function getPlainText() {
+        var html = ($("#docEditor").length && $.fn.summernote)
+            ? $("#docEditor").summernote("code")
+            : ($("#docEditor").val() || "");
+        return $("<div>").html(html).text().trim();
+    }
+
+    function updatePasteTelemetry() {
+        var totalLen = Math.max(1, getPlainText().length);
+        var ratio = Math.min(1.0, pastedChars / totalLen);
+        $("#pasteRatioInput").val(ratio.toFixed(3));
+        $("#pasteEventsInput").val(pasteEvents);
+    }
+
+    function renderAiResult(data) {
+        var $box = $("#aiCheckBox");
+        var $title = $("#aiCheckTitle");
+        var $badge = $("#aiCheckBadge");
+        var $summary = $("#aiCheckSummary");
+        var $reasons = $("#aiCheckReasons");
+
+        $box.show().removeClass("alert-light alert-success alert-warning alert-danger");
+        $badge.removeClass("badge-info badge-success badge-warning badge-danger text-dark");
+
+        if (data.is_flagged) {
+            $box.addClass("alert-danger");
+            $title.html('<i class="fas fa-exclamation-triangle mr-1"></i> AI-Generated / Copy-Pasted Work Detected!');
+            $badge.addClass("badge-danger").text(Math.round(data.ai_score) + "% AI/Copy-Paste Risk");
+        } else if (data.verdict === "SUSPICIOUS") {
+            $box.addClass("alert-warning");
+            $title.html('<i class="fas fa-exclamation-circle mr-1"></i> Originality Caution');
+            $badge.addClass("badge-warning text-dark").text(Math.round(data.ai_score) + "% Risk");
+        } else {
+            $box.addClass("alert-success");
+            $title.html('<i class="fas fa-check-circle mr-1"></i> Originality Check Passed');
+            $badge.addClass("badge-success").text(Math.round(data.ai_score) + "% Risk");
+        }
+
+        $summary.text(data.summary || "");
+        $reasons.empty();
+        (data.reasons || []).forEach(function (r) {
+            $reasons.append($("<li>").text(r));
+        });
+    }
+
+    function runAiCheck(callback) {
+        updatePasteTelemetry();
+        var fd = new FormData();
+        fd.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+        var content = ($("#docEditor").length && $.fn.summernote)
+            ? $("#docEditor").summernote("code")
+            : ($("#docEditor").val() || "");
+        fd.append("document_content", content);
+        fd.append("paste_ratio", $("#pasteRatioInput").val());
+        fd.append("paste_events", $("#pasteEventsInput").val());
+        var fileInput = document.getElementById("uploadedFileInput");
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            fd.append("uploaded_file", fileInput.files[0]);
+        }
+
+        $.ajax({
+            url: "{% url 'student_check_assignment_ai' assignment.id %}",
+            method: "POST",
+            data: fd,
+            processData: false,
+            contentType: false,
+        }).done(function (data) {
+            renderAiResult(data);
+            if (callback) callback(data);
+        }).fail(function () {
+            if (callback) callback(null);
+        });
+    }
+
     if ($("#docEditor").length && $.fn.summernote) {
         $("#docEditor").summernote({
             height: 280,
-            placeholder: "Write your assignment document here...",
+            placeholder: "Write your assignment document in your own words here...",
             toolbar: [
                 ["style", ["style"]],
                 ["font", ["bold", "italic", "underline", "clear"]],
@@ -232,9 +372,72 @@ $(function () {
                 ["table", ["table"]],
                 ["insert", ["link"]],
                 ["view", ["fullscreen"]]
-            ]
+            ],
+            callbacks: {
+                onPaste: function (e) {
+                    var clipboard = (e.originalEvent || e).clipboardData;
+                    var text = clipboard ? clipboard.getData("text/plain") : "";
+                    if (text && text.trim().length > 20) {
+                        pastedChars += text.trim().length;
+                        pasteEvents += 1;
+                        setTimeout(function () { runAiCheck(); }, 250);
+                    }
+                }
+            }
+        });
+    } else {
+        $("#docEditor").on("paste", function (e) {
+            var clipboard = (e.originalEvent || e).clipboardData;
+            var text = clipboard ? clipboard.getData("text/plain") : "";
+            if (text && text.trim().length > 20) {
+                pastedChars += text.trim().length;
+                pasteEvents += 1;
+                setTimeout(function () { runAiCheck(); }, 250);
+            }
         });
     }
+
+    $("#checkAiBtn").on("click", function () {
+        var $btn = $(this);
+        $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Scanning...');
+        runAiCheck(function () {
+            $btn.prop("disabled", false).html('<i class="fas fa-shield-alt mr-1"></i> Check Originality (AI Scan)');
+        });
+    });
+
+    $("#saveDraftBtn").on("click", function () {
+        updatePasteTelemetry();
+        $("#workActionInput").val("save_draft");
+        $("#assignmentWorkForm").submit();
+    });
+
+    $("#turnInBtn").on("click", function () {
+        var $btn = $(this);
+        $btn.prop("disabled", true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Checking Originality...');
+        runAiCheck(function (data) {
+            $btn.prop("disabled", false).html('<i class="fas fa-paper-plane mr-1"></i> Turn In Assignment');
+            if (data && data.is_flagged) {
+                $("#modalAiSummary").text(data.summary);
+                var $list = $("#modalAiReasons").empty();
+                (data.reasons || []).forEach(function (r) {
+                    $list.append($("<li>").text(r));
+                });
+                $("#aiWarningModal").modal("show");
+            } else {
+                if (confirm("Originality verified! Turn in this assignment to your teacher?")) {
+                    $("#workActionInput").val("turn_in");
+                    $("#assignmentWorkForm").submit();
+                }
+            }
+        });
+    });
+
+    $("#forceSubmitBtn").on("click", function () {
+        $("#aiWarningModal").modal("hide");
+        updatePasteTelemetry();
+        $("#workActionInput").val("turn_in");
+        $("#assignmentWorkForm").submit();
+    });
 });
 </script>
 {% endblock custom_js %}
