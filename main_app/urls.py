@@ -18,7 +18,7 @@ from django.views.generic.base import RedirectView
 
 from main_app.EditResultView import EditResultView
 
-from . import hod_views, staff_views, student_views, views
+from . import bursar_views, dos_views, hod_views, staff_views, student_views, views
 from .hod_views import manage_class_teachers
 from .staff_views import class_teacher_dashboard, view_class_students, send_class_results_sms, view_individual_results, view_student_result, send_result_sms, download_student_result, class_teacher_messages
 
@@ -84,6 +84,7 @@ urlpatterns = [
     path("student/add/", hod_views.add_student, name='add_student'),
     path("subject/add/", hod_views.add_subject, name='add_subject'),
     path("staff/manage/", hod_views.manage_staff, name='manage_staff'),
+    path("users/roles/", hod_views.manage_user_roles, name='manage_user_roles'),
     path("staff/print/", hod_views.print_staff_list, name='print_staff_list'),
     path("student/manage/", hod_views.manage_student, name='manage_student'),
     path("student/print/", hod_views.print_student_list, name='print_student_list'),
@@ -160,8 +161,48 @@ urlpatterns = [
          name="student_view_notification"),
     path('student/view/result/', student_views.student_view_result,
          name='student_view_result'),
+    path('student/timetable/', student_views.student_timetable,
+         name='student_timetable'),
+    path('student/assignments/', student_views.student_assignments,
+         name='student_assignments'),
     path('student/messages/', student_views.student_messages,
          name='student_messages'),
+
+    # Subject Teacher Assignments & Class Teacher Welfare
+    path('staff/assignments/', staff_views.staff_assignments,
+         name='staff_assignments'),
+    path('staff/assignments/<int:assignment_id>/delete/',
+         staff_views.staff_delete_assignment, name='staff_delete_assignment'),
+    path('staff/welfare/', staff_views.class_teacher_welfare,
+         name='class_teacher_welfare'),
+    path('staff/welfare/<int:record_id>/update/',
+         staff_views.class_teacher_update_welfare_status,
+         name='class_teacher_update_welfare_status'),
+
+    # Director of Studies (DOS)
+    path('dos/home/', dos_views.dos_home, name='dos_home'),
+    path('dos/exams/', dos_views.dos_manage_exams, name='dos_manage_exams'),
+    path('dos/exams/<int:exam_id>/status/', dos_views.dos_update_exam_status,
+         name='dos_update_exam_status'),
+    path('dos/exams/<int:exam_id>/delete/', dos_views.dos_delete_exam,
+         name='dos_delete_exam'),
+    path('dos/timetable/', dos_views.dos_manage_timetable, name='dos_manage_timetable'),
+    path('dos/timetable/<int:entry_id>/delete/', dos_views.dos_delete_timetable_entry,
+         name='dos_delete_timetable_entry'),
+    path('dos/results/', dos_views.dos_academic_results, name='dos_academic_results'),
+    path('dos/academics/', dos_views.dos_manage_academics, name='dos_manage_academics'),
+    path('dos/profile/', dos_views.dos_view_profile, name='dos_view_profile'),
+
+    # Bursar / Accountant
+    path('bursar/home/', bursar_views.bursar_home, name='bursar_home'),
+    path('bursar/fees/', bursar_views.bursar_fee_structures, name='bursar_fee_structures'),
+    path('bursar/fees/<int:fee_id>/delete/', bursar_views.bursar_delete_fee_structure,
+         name='bursar_delete_fee_structure'),
+    path('bursar/payments/', bursar_views.bursar_payments, name='bursar_payments'),
+    path('bursar/receipt/<int:payment_id>/', bursar_views.bursar_receipt, name='bursar_receipt'),
+    path('bursar/reports/', bursar_views.bursar_financial_reports,
+         name='bursar_financial_reports'),
+    path('bursar/profile/', bursar_views.bursar_view_profile, name='bursar_view_profile'),
          #New urls
     path('manage_class_teachers', manage_class_teachers, name='manage_class_teachers'),
     path('class_teacher_dashboard', class_teacher_dashboard, name='class_teacher_dashboard'),

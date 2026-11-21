@@ -11,7 +11,9 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 
 from django.db import models as db_models
+from django.utils import timezone
 from .forms import *
+from .middleware import get_user_home_url
 from .models import *
 
 
@@ -19,11 +21,7 @@ def student_home(request):
     student = Student.objects.filter(admin=request.user).first()
     if not student:
         messages.error(request, "Access denied. Please log in with a student account.")
-        if getattr(request.user, 'user_type', None) == '1':
-            return redirect('admin_home')
-        elif getattr(request.user, 'user_type', None) == '2':
-            return redirect('staff_home')
-        return redirect('login_page')
+        return redirect(get_user_home_url(request.user))
     total_subject = Subject.objects.filter(course=student.course).count()
     total_attendance = AttendanceReport.objects.filter(student=student).count()
     total_present = AttendanceReport.objects.filter(student=student, status=True).count()
@@ -282,3 +280,49 @@ def student_messages(request):
         'page_title': 'Messages'
     }
     return render(request, "student_template/student_messages.html", context)
+
+
+def student_timetable(request):
+    student = get_object_or_404(Student, admin=request.user)
+    entries = (
+        TimetableEntry.objects.filter(course=student.course)
+        .select_related('subject', 'subject__staff__admin')
+        .order_by('day_of_week', 'start_time')
+        if student.course_id
+        else TimetableEntry.objects.none()
+    )
+    day_order = ["MON", "TUE", "WED", "THU", "FRI", "SAT"]
+    day_labels = dict(TimetableEntry.DAY_CHOICES)
+    grouped_timetable = [
+        {
+            "code": day,
+            "label": day_labels[day],
+            "entries": [e for e in entries if e.day_of_week == day],
+        }
+        for day in day_order
+    ]
+    context = {
+        "page_title": "Class Timetable",
+        "course": student.course,
+        "grouped_timetable": grouped_timetable,
+    }
+    return render(request, "student_template/student_timetable.html", context)
+
+
+def student_assignments(request):
+    student = get_object_or_404(Student, admin=request.user)
+    assignments = (
+        Assignment.objects.filter(subject__course=student.course)
+        .select_related('subject', 'staff__admin')
+        .order_by('due_date', '-created_at')
+        if student.course_id
+        else Assignment.objects.none()
+    )
+    today = timezone.localdate()
+    context = {
+        "page_title": "My Assignments & Assessments",
+        "assignments": assignments,
+        "today": today,
+        "course": student.course,
+    }
+    return render(request, "student_template/student_assignments.html", context)

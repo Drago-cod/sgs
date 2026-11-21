@@ -1,0 +1,106 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy"><h3 class="card-title mb-0">Add Class</h3></div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_course">
+                        <div class="card-body">{{ course_form.as_p }}</div>
+                        <div class="card-footer"><button class="btn btn-primary btn-sm btn-block" type="submit">Add Class</button></div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-teal"><h3 class="card-title mb-0">Add Subject</h3></div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_subject">
+                        <div class="card-body">{{ subject_form.as_p }}</div>
+                        <div class="card-footer"><button class="btn btn-info btn-sm btn-block" type="submit">Add Subject</button></div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-amber"><h3 class="card-title mb-0">Add Academic Term</h3></div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_session">
+                        <div class="card-body">{{ session_form.as_p }}</div>
+                        <div class="card-footer"><button class="btn btn-warning btn-sm btn-block font-weight-bold" type="submit">Add Term</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy"><h3 class="card-title mb-0">Subjects &amp; Assigned Teachers</h3></div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Subject</th><th>Class</th><th>Teacher</th></tr></thead>
+                            <tbody>
+                                {% for s in subjects %}
+                                <tr>
+                                    <td><strong>{{ s.name }}</strong></td>
+                                    <td>{{ s.course.name }}</td>
+                                    <td>{{ s.staff.admin.get_full_name }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="3" class="text-center text-muted py-3">No subjects yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-teal"><h3 class="card-title mb-0">Class Teacher Assignments</h3></div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th>Teacher</th><th>Class</th><th>Role</th><th>Action</th></tr></thead>
+                            <tbody>
+                                {% for st in staff_list %}
+                                <tr>
+                                    <td>{{ st.admin.get_full_name }}</td>
+                                    <td>{{ st.course.name|default:"—" }}</td>
+                                    <td>
+                                        {% if st.class_teacher %}
+                                        <span class="badge badge-success">Class Teacher</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">Subject Teacher</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="post">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="action" value="toggle_class_teacher">
+                                            <input type="hidden" name="staff_id" value="{{ st.id }}">
+                                            <button type="submit" class="btn btn-xs {% if st.class_teacher %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                                {% if st.class_teacher %}Remove{% else %}Assign{% endif %}
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center text-muted py-3">No teachers found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

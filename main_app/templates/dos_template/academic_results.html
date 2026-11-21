@@ -1,0 +1,83 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="card mb-3">
+            <div class="card-header bg-gradient-navy d-flex flex-wrap justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="fas fa-poll mr-2"></i> School-Wide Academic Results</h3>
+                <div>
+                    <span class="badge badge-light text-dark mr-2">Avg: {{ avg_score }}</span>
+                    <span class="badge badge-success">Pass Rate: {{ pass_rate }}%</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <form method="get" class="form-row align-items-end mb-3">
+                    <div class="col-md-4 mb-2">
+                        <label class="small font-weight-bold">Filter by Class</label>
+                        <select name="course" class="form-control form-control-sm">
+                            <option value="">All Classes</option>
+                            {% for c in courses %}
+                            <option value="{{ c.id }}" {% if selected_course_id == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="small font-weight-bold">Filter by Subject</label>
+                        <select name="subject" class="form-control form-control-sm">
+                            <option value="">All Subjects</option>
+                            {% for s in subjects %}
+                            <option value="{{ s.id }}" {% if selected_subject_id == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }} ({{ s.course.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i> Apply Filter</button>
+                        <a href="{% url 'dos_academic_results' %}" class="btn btn-secondary btn-sm">Reset</a>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Subject</th>
+                                <th>Teacher</th>
+                                <th>Test</th>
+                                <th>Exam</th>
+                                <th>Total</th>
+                                <th>Grade</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in rows %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td class="font-weight-bold">{{ row.result.student.admin.get_full_name }}</td>
+                                <td>{{ row.result.student.course.name|default:"—" }}</td>
+                                <td>{{ row.result.subject.name }}</td>
+                                <td>{{ row.result.subject.staff.admin.get_full_name }}</td>
+                                <td>{{ row.result.test }}</td>
+                                <td>{{ row.result.exam }}</td>
+                                <td><strong>{{ row.total }}</strong></td>
+                                <td>
+                                    <span class="badge {% if row.passed %}badge-success{% else %}badge-danger{% endif %}">
+                                        {{ row.grade }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="9" class="text-center py-4 text-muted">No student results match the filter.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

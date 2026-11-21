@@ -1,0 +1,48 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header bg-gradient-navy">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-calendar-week mr-2"></i>
+                    Weekly Timetable — {{ course.name|default:"My Class" }}
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for day in grouped_timetable %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 border">
+                            <div class="card-header bg-light font-weight-bold text-primary">{{ day.label }}</div>
+                            <div class="card-body p-0">
+                                {% if day.entries %}
+                                <table class="table table-sm mb-0">
+                                    <tbody>
+                                        {% for entry in day.entries %}
+                                        <tr>
+                                            <td style="width:120px;"><strong>{{ entry.start_time|time:"H:i" }}–{{ entry.end_time|time:"H:i" }}</strong></td>
+                                            <td>
+                                                <strong>{{ entry.subject.name }}</strong>
+                                                <small class="text-muted d-block">{{ entry.subject.staff.admin.get_full_name }}</small>
+                                            </td>
+                                            <td class="text-right"><span class="badge badge-info">{{ entry.room|default:"Room TBA" }}</span></td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <p class="text-muted small p-3 mb-0">No classes scheduled.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

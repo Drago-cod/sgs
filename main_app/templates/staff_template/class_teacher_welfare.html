@@ -1,0 +1,82 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-heart mr-2"></i> Log Student Welfare Case</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% for field in form %}
+                            <div class="form-group">
+                                {{ field.errors }}
+                                {{ field.label_tag }}
+                                {{ field }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary btn-block">Save Welfare Record</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-hands-helping mr-2"></i> Class Student Welfare Log</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Category</th>
+                                    <th>Summary &amp; Action</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rec in records %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ rec.student.admin.get_full_name }}</strong>
+                                        <small class="text-muted d-block">{{ rec.created_at|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td><span class="badge badge-info">{{ rec.get_category_display }}</span></td>
+                                    <td>
+                                        <div>{{ rec.summary }}</div>
+                                        {% if rec.action_taken %}
+                                        <small class="text-success d-block mt-1"><strong>Action:</strong> {{ rec.action_taken }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <form method="post" action="{% url 'class_teacher_update_welfare_status' rec.id %}">
+                                            {% csrf_token %}
+                                            <select name="status" class="form-control form-control-sm mb-1" onchange="this.form.submit()">
+                                                {% for code, label in rec.STATUS_CHOICES %}
+                                                <option value="{{ code }}" {% if rec.status == code %}selected{% endif %}>{{ label }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="4" class="text-center py-4 text-muted">No student welfare cases logged for this class yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

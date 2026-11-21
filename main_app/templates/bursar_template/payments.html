@@ -1,0 +1,119 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row mb-4">
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-cash-register mr-2"></i> Record Fee Payment</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% for field in form %}
+                            <div class="form-group">
+                                {{ field.errors }}
+                                {{ field.label_tag }}
+                                {{ field }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-success btn-block">
+                                <i class="fas fa-receipt mr-1"></i> Record Payment &amp; Issue Receipt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-8 mb-3">
+                <div class="card mb-3">
+                    <div class="card-header bg-gradient-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-users mr-2"></i> Student Fee Balances</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Student</th>
+                                    <th>Class</th>
+                                    <th>Expected</th>
+                                    <th>Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for row in ledger %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ row.student.admin.get_full_name }}</td>
+                                    <td>{{ row.student.course.name|default:"—" }}</td>
+                                    <td>{{ row.expected|floatformat:2 }}</td>
+                                    <td class="text-success font-weight-bold">{{ row.paid|floatformat:2 }}</td>
+                                    <td class="{% if row.balance > 0 %}text-danger font-weight-bold{% endif %}">{{ row.balance|floatformat:2 }}</td>
+                                    <td>
+                                        {% if row.status == 'PAID' %}
+                                        <span class="badge badge-success">Paid</span>
+                                        {% elif row.status == 'PARTIAL' %}
+                                        <span class="badge badge-warning text-dark">Partial</span>
+                                        {% elif row.status == 'UNPAID' %}
+                                        <span class="badge badge-danger">Unpaid</span>
+                                        {% else %}
+                                        <span class="badge badge-secondary">No Fee Set</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">No students found.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-history mr-2"></i> Payment Receipts History</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Receipt #</th>
+                                    <th>Student</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Date</th>
+                                    <th>Print</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for pay in payments %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ pay.receipt_number }}</td>
+                                    <td>{{ pay.student.admin.get_full_name }}</td>
+                                    <td>{{ pay.amount_paid|floatformat:2 }}</td>
+                                    <td>{{ pay.get_payment_method_display }}</td>
+                                    <td>{{ pay.payment_date|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="{% url 'bursar_receipt' pay.id %}" class="btn btn-xs btn-primary">
+                                            <i class="fas fa-print mr-1"></i> Receipt
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">No receipts yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

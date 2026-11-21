@@ -8,8 +8,10 @@ from django.http import HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import (HttpResponseRedirect, get_object_or_404,redirect, render)
 from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from .forms import *
+from .middleware import get_user_home_url
 from .models import *
 from .ai_attendance import (
     TEACHER_LATE_CUTOFF,
@@ -988,3 +990,80 @@ def staff_attendance_checkin(request):
         'late_cutoff': TEACHER_LATE_CUTOFF.strftime('%H:%M'),
     }
     return render(request, 'staff_template/staff_attendance_checkin.html', context)
+
+
+def staff_assignments(request):
+    """Subject Teachers & Class Teachers manage subject assessments & assignments."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    form = AssignmentForm(request.POST or None, staff=staff)
+    if request.method == 'POST':
+        if form.is_valid():
+            assignment = form.save(commit=False)
+            assignment.staff = staff
+            assignment.save()
+            messages.success(request, f"Assignment '{assignment.title}' published for {assignment.subject.name}.")
+            return redirect('staff_assignments')
+        messages.error(request, "Please check the assignment form fields.")
+
+    assignments = Assignment.objects.filter(staff=staff).select_related('subject', 'subject__course')
+    context = {
+        'page_title': 'Subject Assignments & Assessments',
+        'form': form,
+        'assignments': assignments,
+    }
+    return render(request, 'staff_template/staff_assignments.html', context)
+
+
+@require_POST
+def staff_delete_assignment(request, assignment_id):
+    staff = get_object_or_404(Staff, admin=request.user)
+    assignment = get_object_or_404(Assignment, id=assignment_id, staff=staff)
+    assignment.delete()
+    messages.success(request, "Assignment deleted.")
+    return redirect('staff_assignments')
+
+
+def class_teacher_welfare(request):
+    """Class Teachers record and follow up on student welfare & conduct cases."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    if not staff.class_teacher:
+        messages.error(request, "Only Class Teachers can access Student Welfare records.")
+        return redirect('staff_home')
+
+    form = StudentWelfareForm(request.POST or None, course=staff.course)
+    if request.method == 'POST':
+        if form.is_valid():
+            record = form.save(commit=False)
+            record.recorded_by = staff
+            record.save()
+            messages.success(request, f"Welfare record logged for {record.student.admin.get_full_name()}.")
+            return redirect('class_teacher_welfare')
+        messages.error(request, "Please correct the welfare form errors.")
+
+    records = StudentWelfareRecord.objects.filter(
+        student__course=staff.course
+    ).select_related('student__admin', 'recorded_by__admin')
+    context = {
+        'page_title': f'Student Welfare — {staff.course.name if staff.course else "Class"}',
+        'form': form,
+        'records': records,
+        'course': staff.course,
+    }
+    return render(request, 'staff_template/class_teacher_welfare.html', context)
+
+
+@require_POST
+def class_teacher_update_welfare_status(request, record_id):
+    staff = get_object_or_404(Staff, admin=request.user)
+    if not staff.class_teacher:
+        return redirect('staff_home')
+    record = get_object_or_404(StudentWelfareRecord, id=record_id, student__course=staff.course)
+    new_status = request.POST.get('status', '').upper()
+    if new_status in {c[0] for c in StudentWelfareRecord.STATUS_CHOICES}:
+        record.status = new_status
+        action_taken = request.POST.get('action_taken', '').strip()
+        if action_taken:
+            record.action_taken = action_taken
+        record.save()
+        messages.success(request, "Welfare case updated.")
+    return redirect('class_teacher_welfare')

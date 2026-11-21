@@ -1,0 +1,74 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-lg-4 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-navy">
+                        <h3 class="card-title mb-0"><i class="fas fa-plus-circle mr-2"></i> Add Fee Structure</h3>
+                    </div>
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="card-body">
+                            {% for field in form %}
+                            <div class="form-group">
+                                {{ field.errors }}
+                                {{ field.label_tag }}
+                                {{ field }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="card-footer">
+                            <button type="submit" class="btn btn-primary btn-block">Save Fee Structure</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-8 mb-3">
+                <div class="card">
+                    <div class="card-header bg-gradient-teal">
+                        <h3 class="card-title mb-0"><i class="fas fa-file-invoice-dollar mr-2"></i> Active School Fee Structures</h3>
+                    </div>
+                    <div class="card-body table-responsive p-0">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Term</th>
+                                    <th>Title</th>
+                                    <th>Amount</th>
+                                    <th>Due Date</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fs in structures %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ fs.course.name }}</td>
+                                    <td>{{ fs.session }}</td>
+                                    <td>{{ fs.title }}</td>
+                                    <td class="font-weight-bold text-primary">{{ fs.amount|floatformat:2 }}</td>
+                                    <td>{{ fs.due_date|date:"M d, Y"|default:"—" }}</td>
+                                    <td>
+                                        <form method="post" action="{% url 'bursar_delete_fee_structure' fs.id %}" onsubmit="return confirm('Delete this fee structure?')">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr><td colspan="6" class="text-center py-4 text-muted">No fee structures created yet.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

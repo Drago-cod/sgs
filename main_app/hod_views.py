@@ -119,7 +119,7 @@ def admin_home(request):
 
 def add_staff(request):
     form = StaffForm(request.POST or None, request.FILES or None)
-    context = {'form': form, 'page_title': 'Add Staff'}
+    context = {'form': form, 'page_title': 'Add Staff / System User'}
     if request.method == 'POST':
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
@@ -129,35 +129,43 @@ def add_staff(request):
             gender = form.cleaned_data.get('gender')
             password = form.cleaned_data.get('password')
             course = form.cleaned_data.get('course')
-            
-            # Validate course
-            if not course:
-                messages.error(request, "Please select a course")
+            role = str(form.cleaned_data.get('role') or '2')
+
+            if role in ('2', '6') and not course:
+                messages.error(request, "Please select a class/course for teacher roles.")
                 return render(request, 'hod_template/add_staff_template.html', context)
-            
-            passport = request.FILES.get('profile_pic')
-            if not passport:
-                messages.error(request, "Please upload a profile picture")
-                return render(request, 'hod_template/add_staff_template.html', context)
-                
-            fs = FileSystemStorage()
-            filename = fs.save(passport.name, passport)
-            passport_url = fs.url(filename)
+
+            passport = request.FILES.get('profile_pic') or None
             try:
-                # Create the user - this will trigger the signal to create Staff
                 user = CustomUser.objects.create_user(
-                    email=email, password=password, user_type=2, first_name=first_name, last_name=last_name, profile_pic=passport_url)
-                user.gender = gender
-                user.address = address
-                user.save()
-                
-                # Get the staff instance created by the signal
-                staff = Staff.objects.get(admin=user)
-                # Update the course
-                staff.course = course
-                staff.save()
-                
-                messages.success(request, "Successfully Added")
+                    email=email,
+                    password=password,
+                    user_type=role,
+                    first_name=first_name,
+                    last_name=last_name,
+                    gender=gender,
+                    address=address,
+                )
+                if passport:
+                    user.profile_pic = passport
+                    user.save(update_fields=['profile_pic'])
+
+                if role in ('2', '6'):
+                    staff, _ = Staff.objects.get_or_create(admin=user)
+                    staff.course = course
+                    staff.class_teacher = (role == '6')
+                    staff.save()
+                elif role == '4':
+                    DirectorOfStudies.objects.get_or_create(admin=user)
+                elif role == '5':
+                    Bursar.objects.get_or_create(admin=user)
+                elif role == '1':
+                    Admin.objects.get_or_create(admin=user)
+
+                messages.success(
+                    request,
+                    f"Successfully added {user.get_full_name()} as {user.get_user_type_display()}!",
+                )
                 return redirect(reverse('add_staff'))
 
             except Exception as e:
@@ -605,7 +613,7 @@ def staff_feedback_message(request):
 @csrf_exempt
 def view_staff_leave(request):
     if request.method != 'POST':
-        if getattr(request.user, 'user_type', None) == '2':
+        if getattr(request.user, 'user_type', None) in ('2', '6'):
             return redirect('staff_home')
 
         allLeave = LeaveReportStaff.objects.all()
@@ -638,7 +646,7 @@ def view_student_leave(request):
     if request.method != 'POST':
         if getattr(request.user, 'user_type', None) == '1':
             allLeave = LeaveReportStudent.objects.all()
-        elif getattr(request.user, 'user_type', None) == '2':
+        elif getattr(request.user, 'user_type', None) in ('2', '6'):
             staff = get_object_or_404(Staff, admin=request.user)
             allLeave = LeaveReportStudent.objects.filter(student__course=staff.course)
         else:
@@ -653,7 +661,7 @@ def view_student_leave(request):
         leave = get_object_or_404(LeaveReportStudent, id=request.POST.get('id'))
         if getattr(request.user, 'user_type', None) == '1':
             allowed = True
-        elif getattr(request.user, 'user_type', None) == '2':
+        elif getattr(request.user, 'user_type', None) in ('2', '6'):
             staff = get_object_or_404(Staff, admin=request.user)
             allowed = staff.class_teacher and leave.student.course == staff.course
         else:
@@ -1076,3 +1084,67 @@ def mark_all_ai_notifications_read(request):
     AIAttendanceNotification.objects.filter(is_read=False).update(is_read=True)
     messages.success(request, "All AI attendance notifications marked as read.")
     return redirect(request.META.get('HTTP_REFERER') or reverse('admin_ai_attendance_dashboard'))
+
+
+def manage_user_roles(request):
+    """Principal / Administrator view to oversee all 6 user roles and reassign roles."""
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        new_role = str(request.POST.get('user_type', ''))
+        valid_roles = {c[0] for c in CustomUser.USER_TYPE}
+        if new_role not in valid_roles:
+            messages.error(request, "Invalid user role selected.")
+            return redirect('manage_user_roles')
+
+        target_user = get_object_or_404(CustomUser, id=user_id)
+        if target_user.id == request.user.id and new_role != '1':
+            messages.error(request, "You cannot remove your own Principal / Administrator role.")
+            return redirect('manage_user_roles')
+
+        target_user.user_type = new_role
+        target_user.save(update_fields=['user_type', 'updated_at'])
+
+        if new_role == '1':
+            Admin.objects.get_or_create(admin=target_user)
+        elif new_role == '2':
+            staff, _ = Staff.objects.get_or_create(admin=target_user)
+            staff.class_teacher = False
+            staff.save(update_fields=['class_teacher', 'updated_at'])
+        elif new_role == '3':
+            Student.objects.get_or_create(admin=target_user)
+        elif new_role == '4':
+            DirectorOfStudies.objects.get_or_create(admin=target_user)
+        elif new_role == '5':
+            Bursar.objects.get_or_create(admin=target_user)
+        elif new_role == '6':
+            staff, _ = Staff.objects.get_or_create(admin=target_user)
+            staff.class_teacher = True
+            staff.save(update_fields=['class_teacher', 'updated_at'])
+
+        messages.success(
+            request,
+            f"Updated {target_user.get_full_name() or target_user.email} to {target_user.get_user_type_display()}.",
+        )
+        return redirect('manage_user_roles')
+
+    role_filter = request.GET.get('role', 'ALL')
+    users_qs = CustomUser.objects.all().order_by('user_type', 'last_name', 'first_name')
+    if role_filter in {c[0] for c in CustomUser.USER_TYPE}:
+        users_qs = users_qs.filter(user_type=role_filter)
+
+    role_counts = [
+        {
+            'code': code,
+            'label': label,
+            'count': CustomUser.objects.filter(user_type=code).count(),
+        }
+        for code, label in CustomUser.USER_TYPE
+    ]
+    context = {
+        'page_title': 'User Roles & Access Control',
+        'users': users_qs,
+        'role_choices': CustomUser.USER_TYPE,
+        'role_counts': role_counts,
+        'role_filter': role_filter,
+    }
+    return render(request, 'hod_template/manage_user_roles.html', context)

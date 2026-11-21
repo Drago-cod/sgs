@@ -78,13 +78,47 @@ class AdminForm(CustomUserForm):
 
 
 class StaffForm(CustomUserForm):
+    STAFF_ROLE_CHOICES = [
+        ("2", "Subject Teacher"),
+        ("6", "Class Teacher"),
+        ("4", "Director of Studies (DOS)"),
+        ("5", "Bursar / Accountant"),
+        ("1", "Principal / Administrator"),
+    ]
+    role = forms.ChoiceField(
+        choices=STAFF_ROLE_CHOICES,
+        initial="2",
+        required=True,
+        label="User Role",
+    )
+
     def __init__(self, *args, **kwargs):
         super(StaffForm, self).__init__(*args, **kwargs)
+        self.fields['course'].required = False
+        if kwargs.get('instance') and getattr(kwargs.get('instance'), 'admin', None):
+            self.fields['role'].initial = str(kwargs['instance'].admin.user_type)
 
     class Meta(CustomUserForm.Meta):
         model = Staff
-        fields = CustomUserForm.Meta.fields + \
-            ['course' ]
+        fields = CustomUserForm.Meta.fields + ['role', 'course']
+
+
+class DirectorOfStudiesForm(CustomUserForm):
+    def __init__(self, *args, **kwargs):
+        super(DirectorOfStudiesForm, self).__init__(*args, **kwargs)
+
+    class Meta(CustomUserForm.Meta):
+        model = DirectorOfStudies
+        fields = CustomUserForm.Meta.fields
+
+
+class BursarForm(CustomUserForm):
+    def __init__(self, *args, **kwargs):
+        super(BursarForm, self).__init__(*args, **kwargs)
+
+    class Meta(CustomUserForm.Meta):
+        model = Bursar
+        fields = CustomUserForm.Meta.fields
 
 
 class CourseForm(FormSettings):
@@ -309,4 +343,99 @@ class ClassTeacherForm(forms.ModelForm):
         fields = ['class_teacher']
         widgets = {
             'class_teacher': forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        }
+
+
+class ExaminationForm(FormSettings):
+    class Meta:
+        model = Examination
+        fields = ['name', 'session', 'course', 'start_date', 'end_date', 'status', 'description']
+        widgets = {
+            'start_date': DateInput(attrs={'type': 'date'}),
+            'end_date': DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get('start_date')
+        end = cleaned.get('end_date')
+        if start and end and end < start:
+            raise forms.ValidationError("End date cannot be earlier than start date.")
+        return cleaned
+
+
+class TimetableEntryForm(FormSettings):
+    class Meta:
+        model = TimetableEntry
+        fields = ['course', 'subject', 'day_of_week', 'start_time', 'end_time', 'room']
+        widgets = {
+            'start_time': forms.TimeInput(attrs={'type': 'time'}),
+            'end_time': forms.TimeInput(attrs={'type': 'time'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        start = cleaned.get('start_time')
+        end = cleaned.get('end_time')
+        if start and end and end <= start:
+            raise forms.ValidationError("End time must be after start time.")
+        return cleaned
+
+
+class AssignmentForm(FormSettings):
+    def __init__(self, *args, staff=None, **kwargs):
+        super(AssignmentForm, self).__init__(*args, **kwargs)
+        if staff is not None:
+            self.fields['subject'].queryset = Subject.objects.filter(staff=staff)
+
+    class Meta:
+        model = Assignment
+        fields = ['title', 'subject', 'description', 'due_date', 'max_score']
+        widgets = {
+            'due_date': DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+
+
+class StudentWelfareForm(FormSettings):
+    def __init__(self, *args, course=None, **kwargs):
+        super(StudentWelfareForm, self).__init__(*args, **kwargs)
+        if course is not None:
+            self.fields['student'].queryset = Student.objects.filter(course=course)
+
+    class Meta:
+        model = StudentWelfareRecord
+        fields = ['student', 'category', 'summary', 'action_taken', 'status']
+        widgets = {
+            'summary': forms.Textarea(attrs={'rows': 3}),
+            'action_taken': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class FeeStructureForm(FormSettings):
+    class Meta:
+        model = FeeStructure
+        fields = ['course', 'session', 'title', 'amount', 'due_date', 'description']
+        widgets = {
+            'due_date': DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class FeePaymentForm(FormSettings):
+    class Meta:
+        model = FeePayment
+        fields = [
+            'student',
+            'fee_structure',
+            'amount_paid',
+            'payment_date',
+            'payment_method',
+            'reference_code',
+            'notes',
+        ]
+        widgets = {
+            'payment_date': DateInput(attrs={'type': 'date'}),
+            'notes': forms.Textarea(attrs={'rows': 2}),
         }

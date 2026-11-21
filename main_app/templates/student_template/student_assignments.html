@@ -1,0 +1,44 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="card">
+            <div class="card-header bg-gradient-navy">
+                <h3 class="card-title mb-0">
+                    <i class="fas fa-tasks mr-2"></i>
+                    Assignments &amp; Assessments — {{ course.name|default:"My Class" }}
+                </h3>
+            </div>
+            <div class="card-body">
+                {% for item in assignments %}
+                <div class="border rounded p-3 mb-3" style="border-left: 5px solid {% if item.due_date < today %}#dc3545{% else %}#17a2b8{% endif %} !important;">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-1">
+                        <h5 class="font-weight-bold mb-0 text-dark">{{ item.title }}</h5>
+                        <div>
+                            <span class="badge badge-primary mr-1">{{ item.subject.name }}</span>
+                            {% if item.due_date < today %}
+                            <span class="badge badge-danger">Due {{ item.due_date|date:"M d, Y" }} (Past Due)</span>
+                            {% else %}
+                            <span class="badge badge-success">Due {{ item.due_date|date:"M d, Y" }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <p class="mb-2 text-secondary">{{ item.description }}</p>
+                    <small class="text-muted">
+                        Teacher: <strong>{{ item.staff.admin.get_full_name }}</strong> &middot;
+                        Max Marks: <strong>{{ item.max_score|floatformat:0 }}</strong>
+                    </small>
+                </div>
+                {% empty %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-clipboard-check fa-3x mb-2 text-info"></i>
+                    <p class="mb-0">No assignments have been posted for your class yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}

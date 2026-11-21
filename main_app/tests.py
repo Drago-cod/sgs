@@ -1,4 +1,5 @@
 from datetime import date, time, timedelta
+from decimal import Decimal
 import json
 
 from django.test import TestCase
@@ -11,16 +12,23 @@ from .ai_attendance import (
 )
 from .models import (
     AIAttendanceNotification,
+    Assignment,
     Attendance,
     AttendanceReport,
     Course,
     CustomUser,
+    Examination,
+    FeePayment,
+    FeeStructure,
     LeaveReportStaff,
     Session,
     Staff,
     Student,
+    StudentResult,
+    StudentWelfareRecord,
     Subject,
     TeacherAttendance,
+    TimetableEntry,
 )
 
 
@@ -251,3 +259,211 @@ class AIAttendanceTrackingTests(TestCase):
                 alert_type="CONSECUTIVE_ABSENCE",
             ).exists()
         )
+
+
+class SixUserRolesTests(TestCase):
+    def setUp(self):
+        self.course = Course.objects.create(name="Form Two")
+        self.session = Session.objects.create(
+            start_year=date(2026, 1, 1), end_year=date(2026, 12, 31)
+        )
+
+        self.principal = CustomUser.objects.create_superuser(
+            email="principal@test.com", password="password123", user_type="1",
+            first_name="Grace", last_name="Principal", gender="F", address="HQ",
+        )
+        self.dos = CustomUser.objects.create_user(
+            email="dos@test.com", password="password123", user_type="4",
+            first_name="David", last_name="Studies", gender="M", address="Block B",
+        )
+        self.class_teacher_user = CustomUser.objects.create_user(
+            email="classteacher@test.com", password="password123", user_type="6",
+            first_name="Claire", last_name="Mentor", gender="F", address="Block C",
+        )
+        self.class_teacher = self.class_teacher_user.staff
+        self.class_teacher.course = self.course
+        self.class_teacher.save()
+
+        self.subject_teacher_user = CustomUser.objects.create_user(
+            email="subjectteacher@test.com", password="password123", user_type="2",
+            first_name="Sam", last_name="Science", gender="M", address="Block D",
+        )
+        self.subject_teacher = self.subject_teacher_user.staff
+        self.subject_teacher.course = self.course
+        self.subject_teacher.save()
+
+        self.bursar = CustomUser.objects.create_user(
+            email="bursar@test.com", password="password123", user_type="5",
+            first_name="Ben", last_name="Accounts", gender="M", address="Finance Office",
+        )
+        self.student_user = CustomUser.objects.create_user(
+            email="learner@test.com", password="password123", user_type="3",
+            first_name="Lina", last_name="Student", gender="F", address="Dorm B",
+        )
+        self.student = self.student_user.student
+        self.student.course = self.course
+        self.student.session = self.session
+        self.student.save()
+
+        self.subject = Subject.objects.create(
+            name="Biology", staff=self.subject_teacher, course=self.course, period_number=1
+        )
+
+    def test_role_profiles_and_login_redirects(self):
+        self.assertTrue(self.class_teacher.class_teacher)
+        self.assertFalse(self.subject_teacher.class_teacher)
+        self.assertTrue(hasattr(self.dos, "directorofstudies"))
+        self.assertTrue(hasattr(self.bursar, "bursar"))
+
+        expected_redirects = [
+            (self.principal, reverse("admin_home")),
+            (self.dos, reverse("dos_home")),
+            (self.class_teacher_user, reverse("class_teacher_dashboard")),
+            (self.subject_teacher_user, reverse("staff_home")),
+            (self.bursar, reverse("bursar_home")),
+            (self.student_user, reverse("student_home")),
+        ]
+        for user, expected_url in expected_redirects:
+            self.client.force_login(user)
+            resp = self.client.get(reverse("login_page"))
+            self.assertRedirects(resp, expected_url, fetch_redirect_response=False)
+
+    def test_dos_workflow_and_access_control(self):
+        self.client.force_login(self.dos)
+        # DOS cannot access Bursar or Admin views
+        self.assertRedirects(
+            self.client.get(reverse("bursar_home")), reverse("dos_home"),
+            fetch_redirect_response=False,
+        )
+        self.assertRedirects(
+            self.client.get(reverse("admin_home")), reverse("dos_home"),
+            fetch_redirect_response=False,
+        )
+
+        # DOS creates Examination and Timetable slot
+        self.assertEqual(self.client.get(reverse("dos_home")).status_code, 200)
+        exam_resp = self.client.post(
+            reverse("dos_manage_exams"),
+            {
+                "name": "Mid-Term Exams",
+                "session": self.session.id,
+                "course": self.course.id,
+                "start_date": "2026-11-25",
+                "end_date": "2026-11-30",
+                "status": "UPCOMING",
+                "description": "Term 3 mid-terms",
+            },
+        )
+        self.assertEqual(exam_resp.status_code, 302)
+        self.assertTrue(Examination.objects.filter(name="Mid-Term Exams").exists())
+
+        tt_resp = self.client.post(
+            reverse("dos_manage_timetable"),
+            {
+                "course": self.course.id,
+                "subject": self.subject.id,
+                "day_of_week": "MON",
+                "start_time": "08:00",
+                "end_time": "09:00",
+                "room": "Lab 1",
+            },
+        )
+        self.assertEqual(tt_resp.status_code, 302)
+        self.assertTrue(TimetableEntry.objects.filter(subject=self.subject, room="Lab 1").exists())
+        self.assertEqual(self.client.get(reverse("dos_academic_results")).status_code, 200)
+
+    def test_bursar_fees_payments_receipts_and_reports(self):
+        self.client.force_login(self.bursar)
+        # Bursar cannot access DOS or Admin views
+        self.assertRedirects(
+            self.client.get(reverse("dos_home")), reverse("bursar_home"),
+            fetch_redirect_response=False,
+        )
+
+        # Create fee structure & payment
+        fs_resp = self.client.post(
+            reverse("bursar_fee_structures"),
+            {
+                "course": self.course.id,
+                "session": self.session.id,
+                "title": "Term 3 Tuition",
+                "amount": "500.00",
+                "due_date": "2026-12-01",
+                "description": "Standard term fee",
+            },
+        )
+        self.assertEqual(fs_resp.status_code, 302)
+        fs = FeeStructure.objects.get(title="Term 3 Tuition")
+
+        pay_resp = self.client.post(
+            reverse("bursar_payments"),
+            {
+                "student": self.student.id,
+                "fee_structure": fs.id,
+                "amount_paid": "300.00",
+                "payment_date": "2026-11-21",
+                "payment_method": "MOBILE_MONEY",
+                "reference_code": "MM-9911",
+                "notes": "First installment",
+            },
+        )
+        self.assertEqual(pay_resp.status_code, 302)
+        payment = FeePayment.objects.get(student=self.student)
+        self.assertEqual(payment.amount_paid, Decimal("300.00"))
+        self.assertTrue(payment.receipt_number.startswith("JASS-"))
+
+        self.assertEqual(self.client.get(reverse("bursar_receipt", args=[payment.id])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("bursar_financial_reports")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("bursar_home")).status_code, 200)
+
+    def test_class_teacher_welfare_subject_teacher_assignments_and_student_views(self):
+        # Subject teacher creates assignment
+        self.client.force_login(self.subject_teacher_user)
+        assign_resp = self.client.post(
+            reverse("staff_assignments"),
+            {
+                "title": "Cell Structure Lab Report",
+                "subject": self.subject.id,
+                "description": "Draw and label plant & animal cells.",
+                "due_date": "2026-11-28",
+                "max_score": "50",
+            },
+        )
+        self.assertEqual(assign_resp.status_code, 302)
+        self.assertTrue(Assignment.objects.filter(title="Cell Structure Lab Report").exists())
+
+        # Class teacher logs student welfare case
+        self.client.force_login(self.class_teacher_user)
+        welfare_resp = self.client.post(
+            reverse("class_teacher_welfare"),
+            {
+                "student": self.student.id,
+                "category": "ACADEMIC",
+                "summary": "Needs extra tutoring in Biology.",
+                "action_taken": "Paired with study group.",
+                "status": "OPEN",
+            },
+        )
+        self.assertEqual(welfare_resp.status_code, 302)
+        self.assertTrue(StudentWelfareRecord.objects.filter(student=self.student).exists())
+
+        # Student sees timetable & assignment
+        TimetableEntry.objects.create(
+            course=self.course, subject=self.subject, day_of_week="TUE",
+            start_time=time(10, 0), end_time=time(11, 0), room="Room 4",
+        )
+        self.client.force_login(self.student_user)
+        tt_page = self.client.get(reverse("student_timetable"))
+        self.assertEqual(tt_page.status_code, 200)
+        self.assertContains(tt_page, "Biology")
+
+        assign_page = self.client.get(reverse("student_assignments"))
+        self.assertEqual(assign_page.status_code, 200)
+        self.assertContains(assign_page, "Cell Structure Lab Report")
+
+    def test_principal_manage_user_roles_and_oversight(self):
+        self.client.force_login(self.principal)
+        self.assertEqual(self.client.get(reverse("manage_user_roles")).status_code, 200)
+        # Principal has oversight access to DOS and Bursar hubs
+        self.assertEqual(self.client.get(reverse("dos_home")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("bursar_home")).status_code, 200)

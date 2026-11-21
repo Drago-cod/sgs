@@ -1,0 +1,74 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="row mb-3">
+            {% for rc in role_counts %}
+            <div class="col-xl-2 col-md-4 col-6 mb-2">
+                <a href="?role={{ rc.code }}" class="text-decoration-none">
+                    <div class="card text-center p-3 {% if role_filter == rc.code %}border border-primary{% endif %}">
+                        <h4 class="font-weight-bold text-primary mb-1">{{ rc.count }}</h4>
+                        <small class="text-dark font-weight-bold">{{ rc.label }}</small>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-gradient-navy d-flex flex-wrap justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="fas fa-user-shield mr-2"></i> System Users &amp; Role Assignments</h3>
+                <div>
+                    <a href="{% url 'manage_user_roles' %}" class="btn btn-xs btn-outline-light mr-1">Show All</a>
+                    <a href="{% url 'add_staff' %}" class="btn btn-xs btn-warning text-dark font-weight-bold">
+                        <i class="fas fa-user-plus mr-1"></i> Add Staff / Role User
+                    </a>
+                </div>
+            </div>
+            <div class="card-body table-responsive p-0">
+                <table class="table table-hover mb-0">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Current Role</th>
+                            <th>Reassign Role</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ forloop.counter }}</td>
+                            <td class="font-weight-bold">{{ u.get_full_name|default:u.email }}</td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                <span class="badge {% if u.user_type == '1' %}badge-danger{% elif u.user_type == '4' %}badge-primary{% elif u.user_type == '5' %}badge-success{% elif u.user_type == '6' %}badge-info{% elif u.user_type == '2' %}badge-warning text-dark{% else %}badge-secondary{% endif %}">
+                                    {{ u.get_user_type_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="post" class="form-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="user_id" value="{{ u.id }}">
+                                    <select name="user_type" class="form-control form-control-sm mr-2">
+                                        {% for code, label in role_choices %}
+                                        <option value="{{ code }}" {% if u.user_type == code %}selected{% endif %}>{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-4 text-muted">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock content %}
