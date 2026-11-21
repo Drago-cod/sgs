@@ -34,7 +34,7 @@ def ai_attendance_alerts(request):
         context["nav_notifications"] = all_notifs[:6]
         context["nav_unread_count"] = sum(1 for n in all_notifs if n["is_unread"])
 
-        if role == "1":
+        if role in ("1", "4"):
             unread_qs = AIAttendanceNotification.objects.filter(
                 is_read=False, is_resolved=False
             ).order_by("-created_at")

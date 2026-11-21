@@ -31,6 +31,7 @@ from .models import (
     StudentMessage,
     StudentWelfareRecord,
     Subject,
+    TeacherPerformanceFeedback,
     TimetableEntry,
 )
 
@@ -145,6 +146,24 @@ def get_user_notifications(user, limit=30):
 
     # 2. Director of Studies (DOS)
     elif role == "4":
+        for alert in AIAttendanceNotification.objects.filter(
+            is_resolved=False
+        ).order_by("-created_at")[:8]:
+            items.append({
+                "id": alert.id,
+                "kind": "ai_alert",
+                "category": f"AI Attendance ({alert.get_target_type_display()})",
+                "severity": alert.severity,
+                "icon": "fa-robot",
+                "title": alert.title,
+                "message": alert.message,
+                "recommendation": alert.recommendation,
+                "created_at": alert.created_at,
+                "is_unread": not alert.is_read,
+                "needs_action": True,
+                "link": reverse("admin_ai_attendance_dashboard"),
+            })
+
         for exam in Examination.objects.filter(
             status__in=["UPCOMING", "ONGOING", "COMPLETED"]
         ).select_related("course", "session").order_by("start_date")[:8]:
@@ -242,6 +261,32 @@ def get_user_notifications(user, limit=30):
                         "needs_action": True,
                         "link": reverse("class_teacher_welfare"),
                     })
+
+            # Admin / DOS teacher performance feedback awaiting acknowledgement
+            for perf in TeacherPerformanceFeedback.objects.filter(
+                staff=staff, acknowledged_by_teacher=False
+            ).select_related("reviewer").order_by("-created_at")[:6]:
+                reviewer_name = (
+                    perf.reviewer.get_full_name()
+                    if perf.reviewer else "School Leadership"
+                )
+                items.append({
+                    "id": perf.id,
+                    "kind": "teacher_performance",
+                    "category": f"Performance Feedback ({perf.rating}/5)",
+                    "severity": "HIGH" if perf.rating <= 2 else "MEDIUM",
+                    "icon": "fa-star",
+                    "title": f"{perf.get_category_display()} Review by {reviewer_name}",
+                    "message": perf.strengths + (
+                        f" | Improvement: {perf.areas_for_improvement}"
+                        if perf.areas_for_improvement else ""
+                    ),
+                    "recommendation": perf.recommendations,
+                    "created_at": perf.created_at,
+                    "is_unread": True,
+                    "needs_action": True,
+                    "link": reverse("staff_performance_feedback"),
+                })
 
             # Admin announcements sent to this staff member
             for notif in NotificationStaff.objects.filter(staff=staff).order_by("-created_at")[:8]:

@@ -30,6 +30,7 @@ from .models import (
     StudentMessage,
     StudentWelfareRecord,
     Subject,
+    TeacherPerformanceFeedback,
 )
 from .notifications import get_user_notifications
 from .attendance_audit import dataset_from_request_body, evaluate_attendance_dataset
@@ -202,7 +203,7 @@ def notification_quick_respond(request):
     next_url = request.POST.get("next") or reverse("notification_center")
 
     if action == "mark_all_read":
-        if role == "1":
+        if role in ("1", "4"):
             AIAttendanceNotification.objects.filter(is_read=False).update(is_read=True)
         elif role in ("2", "6"):
             staff = Staff.objects.filter(admin=request.user).first()
@@ -216,13 +217,13 @@ def notification_quick_respond(request):
         messages.success(request, "All unread notifications marked as read.")
         return redirect(next_url)
 
-    if action == "read_ai_alert" and role == "1":
+    if action == "read_ai_alert" and role in ("1", "4"):
         alert = get_object_or_404(AIAttendanceNotification, id=item_id)
         alert.is_read = True
         alert.save(update_fields=["is_read", "updated_at"])
         messages.success(request, f"Marked alert as read: {alert.title}")
 
-    elif action == "resolve_ai_alert" and role == "1":
+    elif action == "resolve_ai_alert" and role in ("1", "4"):
         alert = get_object_or_404(AIAttendanceNotification, id=item_id)
         alert.is_read = True
         alert.is_resolved = True
@@ -333,6 +334,16 @@ def notification_quick_respond(request):
             notif.is_read = True
             notif.save(update_fields=["is_read", "updated_at"])
             messages.success(request, "Announcement marked as read.")
+
+    elif action == "respond_teacher_performance" and role in ("2", "6"):
+        staff = Staff.objects.filter(admin=request.user).first()
+        if staff:
+            perf = get_object_or_404(TeacherPerformanceFeedback, id=item_id, staff=staff)
+            perf.teacher_response = request.POST.get("teacher_response", "").strip()
+            perf.acknowledged_by_teacher = True
+            perf.acknowledged_at = timezone.now()
+            perf.save(update_fields=["teacher_response", "acknowledged_by_teacher", "acknowledged_at", "updated_at"])
+            messages.success(request, "Performance feedback acknowledged and response saved.")
 
     else:
         messages.error(request, "Unsupported or unauthorized notification action.")

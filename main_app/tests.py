@@ -32,6 +32,7 @@ from .models import (
     StudentWelfareRecord,
     Subject,
     TeacherAttendance,
+    TeacherPerformanceFeedback,
     TimetableEntry,
 )
 
@@ -597,3 +598,121 @@ class SixUserRolesTests(TestCase):
         for user in (self.dos, self.bursar):
             self.client.force_login(user)
             self.assertEqual(self.client.get(reverse("notification_center")).status_code, 200)
+
+    def test_dos_and_admin_shared_management_attendance_and_teacher_performance(self):
+        # DOS can add students, teachers, subjects, terms, follow up attendance, and give performance feedback
+        self.client.force_login(self.dos)
+
+        # DOS adds a new Student
+        stu_resp = self.client.post(
+            reverse("add_student"),
+            {
+                "first_name": "Noah",
+                "last_name": "Kofi",
+                "email": "noah.kofi@test.com",
+                "gender": "M",
+                "password": "password123",
+                "address": "Dorm C",
+                "course": self.course.id,
+                "session": self.session.id,
+                "phone_number": "+211900000111",
+            },
+        )
+        self.assertEqual(stu_resp.status_code, 302)
+        self.assertTrue(Student.objects.filter(admin__email="noah.kofi@test.com").exists())
+
+        # DOS adds a new Teacher (Subject Teacher)
+        staff_resp = self.client.post(
+            reverse("add_staff"),
+            {
+                "first_name": "Peter",
+                "last_name": "Laku",
+                "email": "peter.laku@test.com",
+                "gender": "M",
+                "password": "password123",
+                "address": "Staff House 2",
+                "role": "2",
+                "course": self.course.id,
+            },
+        )
+        self.assertEqual(staff_resp.status_code, 302)
+        new_teacher = Staff.objects.get(admin__email="peter.laku@test.com")
+
+        # DOS cannot escalate and create a Principal account
+        esc_resp = self.client.post(
+            reverse("add_staff"),
+            {
+                "first_name": "Fake",
+                "last_name": "Admin",
+                "email": "fake.admin@test.com",
+                "gender": "M",
+                "password": "password123",
+                "address": "Nowhere",
+                "role": "1",
+                "course": self.course.id,
+            },
+        )
+        self.assertFalse(CustomUser.objects.filter(email="fake.admin@test.com").exists())
+
+        # DOS adds Subject & Term
+        subj_resp = self.client.post(
+            reverse("add_subject"),
+            {
+                "name": "Chemistry",
+                "staff": new_teacher.id,
+                "course": self.course.id,
+                "attendance_type": "ACADEMIC",
+            },
+        )
+        self.assertEqual(subj_resp.status_code, 302)
+        self.assertTrue(Subject.objects.filter(name="Chemistry").exists())
+
+        term_resp = self.client.post(
+            reverse("add_session"),
+            {"start_year": "2027-01-10", "end_year": "2027-04-20"},
+        )
+        self.assertEqual(term_resp.status_code, 302)
+        self.assertTrue(Session.objects.filter(start_year=date(2027, 1, 10)).exists())
+
+        # DOS follows up attendance (AI tracker + View Attendance)
+        self.assertEqual(self.client.get(reverse("admin_ai_attendance_dashboard")).status_code, 200)
+        self.assertEqual(self.client.get(reverse("admin_view_attendance")).status_code, 200)
+
+        # DOS gives performance feedback to the new teacher
+        perf_resp = self.client.post(
+            reverse("teacher_performance_feedback"),
+            {
+                "staff": new_teacher.id,
+                "session": self.session.id,
+                "category": "TEACHING_QUALITY",
+                "rating": 5,
+                "strengths": "Clear lab demonstrations and punctual attendance.",
+                "areas_for_improvement": "Share homework rubrics earlier.",
+                "recommendations": "Mentor junior teachers in lab safety.",
+            },
+        )
+        self.assertEqual(perf_resp.status_code, 302)
+        perf = TeacherPerformanceFeedback.objects.get(staff=new_teacher, reviewer=self.dos)
+        self.assertEqual(perf.rating, 5)
+
+        # Principal can also access and submit teacher performance feedback
+        self.client.force_login(self.principal)
+        self.assertEqual(self.client.get(reverse("teacher_performance_feedback")).status_code, 200)
+
+        # Teacher receives feedback in Notification Center & responds inline
+        self.client.force_login(new_teacher.admin)
+        nc = self.client.get(reverse("notification_center"))
+        self.assertEqual(nc.status_code, 200)
+        self.assertContains(nc, "Clear lab demonstrations")
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {
+                "action": "respond_teacher_performance",
+                "item_id": perf.id,
+                "teacher_response": "Thank you, I will post rubrics on Mondays.",
+            },
+        )
+        perf.refresh_from_db()
+        self.assertTrue(perf.acknowledged_by_teacher)
+        self.assertEqual(perf.teacher_response, "Thank you, I will post rubrics on Mondays.")
+        self.assertEqual(self.client.get(reverse("staff_performance_feedback")).status_code, 200)

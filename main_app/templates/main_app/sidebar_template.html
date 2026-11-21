@@ -65,6 +65,13 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    {% url 'teacher_performance_feedback' as teacher_performance_feedback %}
+                    <a href="{{teacher_performance_feedback}}" class="nav-link {% if teacher_performance_feedback == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-star-half-alt"></i>
+                        <p>Teacher Performance</p>
+                    </a>
+                </li>
+                <li class="nav-item">
                     {% url 'add_student' as add_student %}
                     <a href="{{add_student}}" class="nav-link {% if add_student == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-user-graduate"></i>
@@ -249,11 +256,106 @@
                         <p>Academic Results</p>
                     </a>
                 </li>
+
+                <li class="nav-header">STUDENTS &amp; TEACHERS</li>
+                <li class="nav-item">
+                    {% url 'add_student' as add_student %}
+                    <a href="{{add_student}}" class="nav-link {% if add_student == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-graduate"></i>
+                        <p>Add Student</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manage_student' as manage_student %}
+                    <a href="{{manage_student}}" class="nav-link {% if manage_student == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>Manage Students</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'add_staff' as add_staff %}
+                    <a href="{{add_staff}}" class="nav-link {% if add_staff == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-plus"></i>
+                        <p>Add Teacher</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manage_staff' as manage_staff %}
+                    <a href="{{manage_staff}}" class="nav-link {% if manage_staff == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chalkboard-teacher"></i>
+                        <p>Manage Teachers</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manage_class_teachers' as manage_class_teachers %}
+                    <a href="{{manage_class_teachers}}" class="nav-link {% if manage_class_teachers == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-tie"></i>
+                        <p>Class Teachers</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">SUBJECTS, CLASSES &amp; TERMS</li>
+                <li class="nav-item">
+                    {% url 'add_subject' as add_subject %}
+                    <a href="{{add_subject}}" class="nav-link {% if add_subject == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-book"></i>
+                        <p>Add Subject</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manage_subject' as manage_subject %}
+                    <a href="{{manage_subject}}" class="nav-link {% if manage_subject == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-book-open"></i>
+                        <p>Manage Subjects</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'add_session' as add_session %}
+                    <a href="{{add_session}}" class="nav-link {% if add_session == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-calendar-plus"></i>
+                        <p>Add Term</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'manage_session' as manage_session %}
+                    <a href="{{manage_session}}" class="nav-link {% if manage_session == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-calendar-alt"></i>
+                        <p>Manage Terms</p>
+                    </a>
+                </li>
                 <li class="nav-item">
                     {% url 'dos_manage_academics' as dos_manage_academics %}
                     <a href="{{dos_manage_academics}}" class="nav-link {% if dos_manage_academics == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-school"></i>
-                        <p>Classes, Subjects &amp; Terms</p>
+                        <p>Classes &amp; Structure</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">ATTENDANCE &amp; PERFORMANCE</li>
+                <li class="nav-item">
+                    {% url 'admin_ai_attendance_dashboard' as admin_ai_attendance_dashboard %}
+                    <a href="{{admin_ai_attendance_dashboard}}" class="nav-link {% if admin_ai_attendance_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-robot"></i>
+                        <p>
+                            AI Attendance Tracker
+                            {% if ai_unread_count %}
+                            <span class="badge badge-danger right">{{ ai_unread_count }}</span>
+                            {% endif %}
+                        </p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'admin_view_attendance' as admin_view_attendance %}
+                    <a href="{{admin_view_attendance}}" class="nav-link {% if admin_view_attendance == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Follow Up Attendance</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'teacher_performance_feedback' as teacher_performance_feedback %}
+                    <a href="{{teacher_performance_feedback}}" class="nav-link {% if teacher_performance_feedback == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-star-half-alt"></i>
+                        <p>Teacher Performance</p>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -472,6 +574,13 @@
                     <a href="{{staff_feedback}}" class="nav-link {% if staff_feedback == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-comment"></i>
                         <p>Feedback</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'staff_performance_feedback' as staff_performance_feedback %}
+                    <a href="{{staff_performance_feedback}}" class="nav-link {% if staff_performance_feedback == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-award"></i>
+                        <p>My Performance Reviews</p>
                     </a>
                 </li>
 

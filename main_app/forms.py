@@ -85,6 +85,10 @@ class StaffForm(CustomUserForm):
         ("5", "Bursar / Accountant"),
         ("1", "Principal / Administrator"),
     ]
+    TEACHER_ONLY_ROLE_CHOICES = [
+        ("2", "Subject Teacher"),
+        ("6", "Class Teacher"),
+    ]
     role = forms.ChoiceField(
         choices=STAFF_ROLE_CHOICES,
         initial="2",
@@ -92,9 +96,11 @@ class StaffForm(CustomUserForm):
         label="User Role",
     )
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, allow_all_roles=True, **kwargs):
         super(StaffForm, self).__init__(*args, **kwargs)
         self.fields['course'].required = False
+        if not allow_all_roles:
+            self.fields['role'].choices = self.TEACHER_ONLY_ROLE_CHOICES
         if kwargs.get('instance') and getattr(kwargs.get('instance'), 'admin', None):
             self.fields['role'].initial = str(kwargs['instance'].admin.user_type)
 
@@ -438,4 +444,23 @@ class FeePaymentForm(FormSettings):
         widgets = {
             'payment_date': DateInput(attrs={'type': 'date'}),
             'notes': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class TeacherPerformanceFeedbackForm(FormSettings):
+    class Meta:
+        model = TeacherPerformanceFeedback
+        fields = [
+            'staff',
+            'session',
+            'category',
+            'rating',
+            'strengths',
+            'areas_for_improvement',
+            'recommendations',
+        ]
+        widgets = {
+            'strengths': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Key strengths observed...'}),
+            'areas_for_improvement': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Areas needing improvement (optional)...'}),
+            'recommendations': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Actionable next steps (optional)...'}),
         }

@@ -1,0 +1,77 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="p-4 rounded mb-4 text-white d-flex flex-wrap justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e3a5f 0%, #17a2b8 100%);">
+            <div>
+                <h2 class="font-weight-bold mb-1"><i class="fas fa-award mr-2"></i> My Performance Reviews</h2>
+                <p class="mb-0" style="opacity:0.9;">Feedback from the Principal and Director of Studies on your teaching &amp; attendance.</p>
+            </div>
+            {% if avg_rating %}
+            <div class="bg-white text-dark rounded px-3 py-2 font-weight-bold">
+                <i class="fas fa-star text-warning mr-1"></i> Average Rating: {{ avg_rating }} / 5.0
+            </div>
+            {% endif %}
+        </div>
+
+        {% for fb in feedbacks %}
+        <div class="card mb-3" style="border-left: 5px solid {% if fb.rating >= 4 %}#28a745{% elif fb.rating == 3 %}#17a2b8{% else %}#dc3545{% endif %};">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                    <div>
+                        <span class="badge badge-primary mr-1">{{ fb.get_category_display }}</span>
+                        <span class="badge {% if fb.rating >= 4 %}badge-success{% elif fb.rating == 3 %}badge-warning text-dark{% else %}badge-danger{% endif %}">
+                            <i class="fas fa-star mr-1"></i>{{ fb.get_rating_display }}
+                        </span>
+                    </div>
+                    <small class="text-muted">
+                        Reviewed by <strong>{{ fb.reviewer.get_full_name|default:"School Leadership" }}</strong>
+                        ({{ fb.reviewer.get_user_type_display|default:"Admin" }}) &middot; {{ fb.created_at|date:"M d, Y" }}
+                    </small>
+                </div>
+
+                <p class="mb-1"><strong>Strengths:</strong> {{ fb.strengths }}</p>
+                {% if fb.areas_for_improvement %}
+                <p class="mb-1 text-secondary"><strong>Areas for Improvement:</strong> {{ fb.areas_for_improvement }}</p>
+                {% endif %}
+                {% if fb.recommendations %}
+                <p class="mb-2 text-primary"><strong>Recommendations:</strong> {{ fb.recommendations }}</p>
+                {% endif %}
+
+                {% if fb.acknowledged_by_teacher %}
+                <div class="alert alert-success py-2 mb-0 small">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    <strong>Acknowledged</strong> on {{ fb.acknowledged_at|date:"M d, Y H:i" }}
+                    {% if fb.teacher_response %}
+                    <div class="mt-1"><strong>Your Response:</strong> {{ fb.teacher_response }}</div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <form method="post" class="mt-3 pt-2 border-top">
+                    {% csrf_token %}
+                    <input type="hidden" name="feedback_id" value="{{ fb.id }}">
+                    <div class="input-group input-group-sm">
+                        <input type="text" name="teacher_response" class="form-control"
+                               placeholder="Add your response or reflection (optional)...">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check mr-1"></i> Acknowledge &amp; Respond
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="card p-5 text-center text-muted">
+            <i class="fas fa-star fa-3x text-warning mb-3"></i>
+            <h5 class="font-weight-bold text-dark">No performance reviews yet</h5>
+            <p class="mb-0">Feedback from the Principal or Director of Studies will appear here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock content %}

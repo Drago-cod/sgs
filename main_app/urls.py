@@ -86,6 +86,8 @@ urlpatterns = [
     path("student/add/", hod_views.add_student, name='add_student'),
     path("subject/add/", hod_views.add_subject, name='add_subject'),
     path("staff/manage/", hod_views.manage_staff, name='manage_staff'),
+    path("teachers/performance/", hod_views.teacher_performance_feedback,
+         name='teacher_performance_feedback'),
     path("users/roles/", hod_views.manage_user_roles, name='manage_user_roles'),
     path("staff/print/", hod_views.print_staff_list, name='print_staff_list'),
     path("student/manage/", hod_views.manage_student, name='manage_student'),
@@ -173,6 +175,8 @@ urlpatterns = [
     # Subject Teacher Assignments & Class Teacher Welfare
     path('staff/assignments/', staff_views.staff_assignments,
          name='staff_assignments'),
+    path('staff/performance/', staff_views.staff_performance_feedback,
+         name='staff_performance_feedback'),
     path('staff/assignments/<int:assignment_id>/delete/',
          staff_views.staff_delete_assignment, name='staff_delete_assignment'),
     path('staff/welfare/', staff_views.class_teacher_welfare,

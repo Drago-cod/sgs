@@ -1086,3 +1086,32 @@ def class_teacher_update_welfare_status(request, record_id):
         record.save()
         messages.success(request, "Welfare case updated.")
     return redirect('class_teacher_welfare')
+
+
+def staff_performance_feedback(request):
+    """Teachers view performance feedback from Principal/DOS and submit responses."""
+    staff = get_object_or_404(Staff, admin=request.user)
+    if request.method == 'POST':
+        feedback_id = request.POST.get('feedback_id')
+        response_text = request.POST.get('teacher_response', '').strip()
+        perf = get_object_or_404(TeacherPerformanceFeedback, id=feedback_id, staff=staff)
+        perf.teacher_response = response_text
+        perf.acknowledged_by_teacher = True
+        perf.acknowledged_at = timezone.now()
+        perf.save(update_fields=['teacher_response', 'acknowledged_by_teacher', 'acknowledged_at', 'updated_at'])
+        messages.success(request, "Your acknowledgement and response have been recorded.")
+        return redirect('staff_performance_feedback')
+
+    feedbacks = TeacherPerformanceFeedback.objects.filter(staff=staff).select_related(
+        'reviewer', 'session'
+    )
+    avg_rating = (
+        round(sum(f.rating for f in feedbacks) / len(feedbacks), 1)
+        if feedbacks else None
+    )
+    context = {
+        'page_title': 'My Performance Feedback',
+        'feedbacks': feedbacks,
+        'avg_rating': avg_rating,
+    }
+    return render(request, 'staff_template/staff_performance_feedback.html', context)

@@ -667,3 +667,46 @@ class FeePayment(models.Model):
 
     def __str__(self):
         return f"Receipt {self.receipt_number} - {self.student} ({self.amount_paid})"
+
+
+class TeacherPerformanceFeedback(models.Model):
+    RATING_CHOICES = (
+        (5, "5 - Outstanding"),
+        (4, "4 - Very Good"),
+        (3, "3 - Satisfactory"),
+        (2, "2 - Needs Improvement"),
+        (1, "1 - Unsatisfactory"),
+    )
+    CATEGORY_CHOICES = (
+        ("OVERALL", "Overall Performance"),
+        ("TEACHING_QUALITY", "Teaching Quality & Lesson Delivery"),
+        ("ATTENDANCE_PUNCTUALITY", "Attendance & Punctuality"),
+        ("STUDENT_ENGAGEMENT", "Student Engagement"),
+        ("ASSESSMENT_GRADING", "Assessment & Grading Timeliness"),
+        ("CLASS_MANAGEMENT", "Classroom Management"),
+    )
+
+    staff = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, related_name="performance_feedbacks")
+    reviewer = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="given_teacher_feedbacks")
+    session = models.ForeignKey(
+        Session, null=True, blank=True, on_delete=models.SET_NULL)
+    category = models.CharField(
+        max_length=30, choices=CATEGORY_CHOICES, default="OVERALL")
+    rating = models.PositiveSmallIntegerField(choices=RATING_CHOICES, default=4)
+    strengths = models.TextField()
+    areas_for_improvement = models.TextField(blank=True, default="")
+    recommendations = models.TextField(blank=True, default="")
+    teacher_response = models.TextField(blank=True, default="")
+    acknowledged_by_teacher = models.BooleanField(default=False)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Performance Review: {self.staff} ({self.rating}/5)"

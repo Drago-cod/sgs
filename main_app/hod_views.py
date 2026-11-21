@@ -118,8 +118,16 @@ def admin_home(request):
 
 
 def add_staff(request):
-    form = StaffForm(request.POST or None, request.FILES or None)
-    context = {'form': form, 'page_title': 'Add Staff / System User'}
+    is_admin = str(getattr(request.user, 'user_type', '')) == '1'
+    form = StaffForm(
+        request.POST or None,
+        request.FILES or None,
+        allow_all_roles=is_admin,
+    )
+    context = {
+        'form': form,
+        'page_title': 'Add Staff / System User' if is_admin else 'Add Teacher',
+    }
     if request.method == 'POST':
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
@@ -130,6 +138,10 @@ def add_staff(request):
             password = form.cleaned_data.get('password')
             course = form.cleaned_data.get('course')
             role = str(form.cleaned_data.get('role') or '2')
+
+            if not is_admin and role not in ('2', '6'):
+                messages.error(request, "DOS can only create Subject Teacher or Class Teacher accounts.")
+                return render(request, 'hod_template/add_staff_template.html', context)
 
             if role in ('2', '6') and not course:
                 messages.error(request, "Please select a class/course for teacher roles.")
@@ -188,27 +200,22 @@ def add_student(request):
                     messages.error(request, "Email already exists!")
                     return render(request, 'hod_template/add_student_template.html', context)
                 
-                # Handle profile picture
-                passport = request.FILES.get('profile_pic')
-                if not passport:
-                    messages.error(request, "Profile picture is required!")
-                    return render(request, 'hod_template/add_student_template.html', context)
-                
-                fs = FileSystemStorage()
-                filename = fs.save(passport.name, passport)
-                passport_url = fs.url(filename)
-                
+                # Handle profile picture (optional)
+                passport = request.FILES.get('profile_pic') or None
+
                 # Create the user first - this will trigger the signal to create Student profile
                 user = CustomUser.objects.create_user(
                     email=email,
                     password=student_form.cleaned_data.get('password'),
-                    user_type=3,
+                    user_type='3',
                     first_name=student_form.cleaned_data.get('first_name'),
                     last_name=student_form.cleaned_data.get('last_name'),
-                    profile_pic=passport_url,
                     gender=student_form.cleaned_data.get('gender'),
                     address=student_form.cleaned_data.get('address')
                 )
+                if passport:
+                    user.profile_pic = passport
+                    user.save(update_fields=['profile_pic'])
                 
                 # Get the student instance created by the signal and update it
                 student = Student.objects.get(admin=user)
@@ -294,7 +301,7 @@ def manage_staff(request):
 
 
 def print_staff_list(request):
-    if getattr(request.user, 'user_type', None) != '1':
+    if getattr(request.user, 'user_type', None) not in ('1', '4'):
         return HttpResponse("Forbidden", status=403)
 
     all_staff = Staff.objects.select_related('admin', 'course').order_by(
@@ -315,7 +322,7 @@ def manage_student(request):
 
 
 def print_student_list(request):
-    if getattr(request.user, 'user_type', None) != '1':
+    if getattr(request.user, 'user_type', None) not in ('1', '4'):
         return HttpResponse("Forbidden", status=403)
 
     students = Student.objects.select_related(
@@ -1148,3 +1155,72 @@ def manage_user_roles(request):
         'role_filter': role_filter,
     }
     return render(request, 'hod_template/manage_user_roles.html', context)
+
+
+def teacher_performance_feedback(request):
+    """Principal / Admin and DOS evaluate teacher performance and give structured feedback."""
+    form = TeacherPerformanceFeedbackForm(request.POST or None)
+    if request.method == 'POST':
+        if form.is_valid():
+            feedback_obj = form.save(commit=False)
+            feedback_obj.reviewer = request.user
+            feedback_obj.save()
+            reviewer_label = request.user.get_user_type_display()
+            NotificationStaff.objects.create(
+                staff=feedback_obj.staff,
+                message=(
+                    f"New {feedback_obj.get_category_display()} performance feedback "
+                    f"({feedback_obj.rating}/5) from {request.user.get_full_name() or reviewer_label}: "
+                    f"{feedback_obj.strengths[:140]}"
+                ),
+            )
+            messages.success(
+                request,
+                f"Performance feedback ({feedback_obj.rating}/5) sent to {feedback_obj.staff.admin.get_full_name()}!",
+            )
+            return redirect('teacher_performance_feedback')
+        messages.error(request, "Please correct the errors in the performance feedback form.")
+
+    selected_staff_id = request.GET.get('staff_id')
+    feedbacks_qs = TeacherPerformanceFeedback.objects.select_related(
+        'staff__admin', 'staff__course', 'reviewer', 'session'
+    )
+    if selected_staff_id:
+        feedbacks_qs = feedbacks_qs.filter(staff_id=selected_staff_id)
+
+    # Build live performance metrics per teacher
+    teacher_metrics = []
+    for staff in Staff.objects.select_related('admin', 'course').order_by('admin__last_name'):
+        ai_profile = analyze_teacher_attendance(staff, create_alerts=False)
+        subject_results = list(StudentResult.objects.filter(subject__staff=staff))
+        avg_student_score = (
+            round(
+                sum(float(r.test) + float(r.exam) for r in subject_results) / len(subject_results),
+                1,
+            )
+            if subject_results else None
+        )
+        reviews = list(TeacherPerformanceFeedback.objects.filter(staff=staff))
+        avg_rating = (
+            round(sum(r.rating for r in reviews) / len(reviews), 1)
+            if reviews else None
+        )
+        teacher_metrics.append({
+            'staff': staff,
+            'attendance_rate': ai_profile['attendance_rate'],
+            'punctuality_rate': ai_profile['punctuality_rate'],
+            'classes_logged_recent': ai_profile['classes_logged_recent'],
+            'subjects_count': len(ai_profile['subjects']),
+            'avg_student_score': avg_student_score,
+            'avg_rating': avg_rating,
+            'review_count': len(reviews),
+        })
+
+    context = {
+        'page_title': 'Teacher Performance & Feedback',
+        'form': form,
+        'teacher_metrics': teacher_metrics,
+        'feedbacks': feedbacks_qs[:40],
+        'selected_staff_id': selected_staff_id or '',
+    }
+    return render(request, 'hod_template/teacher_performance_feedback.html', context)

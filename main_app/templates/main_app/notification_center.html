@@ -208,6 +208,16 @@
                     <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">Manage Exams</a>
                 </form>
 
+                {% elif n.kind == 'teacher_performance' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="respond_teacher_performance">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <input type="text" name="teacher_response" class="form-control form-control-sm flex-fill" placeholder="Add your response or reflection (optional)...">
+                    <button type="submit" class="btn btn-sm btn-success"><i class="fas fa-check mr-1"></i>Acknowledge &amp; Respond</button>
+                    <a href="{{ n.link }}" class="btn btn-sm btn-outline-secondary">All Reviews</a>
+                </form>
+
                 {% elif n.kind == 'staff_announcement' or n.kind == 'student_announcement' %}
                 <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
                     {% if n.is_unread %}
