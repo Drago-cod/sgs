@@ -1,0 +1,244 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+    .notif-hero {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 55%, #17a2b8 100%);
+        border-radius: 14px;
+        padding: 22px 26px;
+        color: #fff;
+        margin-bottom: 22px;
+        box-shadow: 0 5px 18px rgba(30, 58, 95, 0.22);
+    }
+    .notif-card {
+        border-radius: 12px;
+        border: 1px solid #e6ebf1;
+        border-left: 5px solid #17a2b8;
+        background: #fff;
+        padding: 16px 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .notif-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.09);
+    }
+    .notif-card.unread { background: #f4faff; }
+    .notif-card.sev-CRITICAL { border-left-color: #dc3545; }
+    .notif-card.sev-HIGH { border-left-color: #fd7e14; }
+    .notif-card.sev-MEDIUM { border-left-color: #17a2b8; }
+    .notif-card.sev-LOW { border-left-color: #28a745; }
+    .quick-respond-bar {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-top: 12px;
+        border: 1px solid #edf2f7;
+    }
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+    <div class="container-fluid">
+        <div class="notif-hero d-flex flex-wrap justify-content-between align-items-center">
+            <div class="mb-2 mb-md-0">
+                <h2 class="font-weight-bold mb-1"><i class="fas fa-bell mr-2"></i> Notification Center</h2>
+                <p class="mb-0" style="opacity:0.9;">
+                    Review alerts, messages, leave requests, feedback, and respond directly in one click.
+                </p>
+            </div>
+            <div class="d-flex flex-wrap align-items-center" style="gap: 8px;">
+                <a href="?filter=all" class="btn btn-sm {% if filter_mode == 'all' %}btn-light text-dark font-weight-bold{% else %}btn-outline-light{% endif %}">
+                    All ({{ total_count }})
+                </a>
+                <a href="?filter=action" class="btn btn-sm {% if filter_mode == 'action' %}btn-warning text-dark font-weight-bold{% else %}btn-outline-light{% endif %}">
+                    Action Needed ({{ action_count }})
+                </a>
+                <a href="?filter=unread" class="btn btn-sm {% if filter_mode == 'unread' %}btn-info font-weight-bold{% else %}btn-outline-light{% endif %}">
+                    Unread ({{ unread_count }})
+                </a>
+                {% if unread_count > 0 %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="mark_all_read">
+                    <button type="submit" class="btn btn-sm btn-success">
+                        <i class="fas fa-check-double mr-1"></i> Mark All Read
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% for n in notifications %}
+        <div class="notif-card sev-{{ n.severity }} {% if n.is_unread %}unread{% endif %}">
+            <div class="d-flex flex-wrap justify-content-between align-items-start mb-1">
+                <div>
+                    <span class="badge {% if n.severity == 'CRITICAL' %}badge-danger{% elif n.severity == 'HIGH' %}badge-warning text-dark{% elif n.severity == 'MEDIUM' %}badge-info{% else %}badge-success{% endif %} mr-1">
+                        <i class="fas {{ n.icon }} mr-1"></i>{{ n.category }}
+                    </span>
+                    {% if n.is_unread %}
+                    <span class="badge badge-pill badge-primary">NEW</span>
+                    {% endif %}
+                </div>
+                <small class="text-muted">
+                    <i class="far fa-clock mr-1"></i>{{ n.created_at|date:"M d, Y H:i" }}
+                </small>
+            </div>
+
+            <h5 class="font-weight-bold text-dark mb-1">{{ n.title }}</h5>
+            <p class="text-secondary mb-1">{{ n.message }}</p>
+            {% if n.recommendation %}
+            <div class="small text-primary mt-1">
+                <i class="fas fa-lightbulb text-warning mr-1"></i><strong>AI Tip:</strong> {{ n.recommendation }}
+            </div>
+            {% endif %}
+
+            <!-- Inline Quick Response Controls -->
+            <div class="quick-respond-bar">
+                {% if n.kind == 'ai_alert' %}
+                <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% if n.is_unread %}
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="read_ai_alert">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <button type="submit" class="btn btn-xs btn-outline-primary"><i class="fas fa-eye mr-1"></i>Mark Read</button>
+                    </form>
+                    {% endif %}
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="resolve_ai_alert">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check mr-1"></i>Resolve Alert</button>
+                    </form>
+                    <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">Open AI Tracker <i class="fas fa-arrow-right ml-1"></i></a>
+                </div>
+
+                {% elif n.kind == 'staff_leave' %}
+                <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="decide_staff_leave">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <input type="hidden" name="decision" value="approve">
+                        <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check mr-1"></i>Approve Leave</button>
+                    </form>
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="decide_staff_leave">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <input type="hidden" name="decision" value="reject">
+                        <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-times mr-1"></i>Reject</button>
+                    </form>
+                    <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">View All Leaves</a>
+                </div>
+
+                {% elif n.kind == 'student_leave_admin' or n.kind == 'student_leave_teacher' %}
+                <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="decide_student_leave">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <input type="hidden" name="decision" value="approve">
+                        <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check mr-1"></i>Approve</button>
+                    </form>
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="decide_student_leave">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <input type="hidden" name="decision" value="reject">
+                        <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-times mr-1"></i>Reject</button>
+                    </form>
+                    {% if n.kind == 'student_leave_teacher' %}
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="decide_student_leave">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <input type="hidden" name="decision" value="forward">
+                        <button type="submit" class="btn btn-xs btn-warning text-dark font-weight-bold"><i class="fas fa-share mr-1"></i>Forward to Principal</button>
+                    </form>
+                    {% endif %}
+                    <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">Open Leaves</a>
+                </div>
+
+                {% elif n.kind == 'staff_feedback' or n.kind == 'student_feedback' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="{% if n.kind == 'staff_feedback' %}reply_staff_feedback{% else %}reply_student_feedback{% endif %}">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <input type="text" name="reply" class="form-control form-control-sm flex-fill" placeholder="Type quick reply to feedback..." required>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-paper-plane mr-1"></i>Send Reply</button>
+                </form>
+
+                {% elif n.kind == 'direct_message' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="reply_message">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <input type="text" name="reply" class="form-control form-control-sm flex-fill" placeholder="Type quick reply..." required>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="fas fa-reply mr-1"></i>Reply</button>
+                    <a href="{{ n.link }}" class="btn btn-sm btn-outline-secondary">Open Thread</a>
+                </form>
+
+                {% elif n.kind == 'welfare_case' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_welfare">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <input type="text" name="action_taken" class="form-control form-control-sm flex-fill" placeholder="Action taken note (optional)...">
+                    <button type="submit" name="status" value="IN_PROGRESS" class="btn btn-xs btn-info">In Progress</button>
+                    <button type="submit" name="status" value="RESOLVED" class="btn btn-xs btn-success"><i class="fas fa-check mr-1"></i>Resolve</button>
+                </form>
+
+                {% elif n.kind == 'dos_exam' %}
+                <form method="post" action="{% url 'notification_quick_respond' %}" class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_exam_status">
+                    <input type="hidden" name="item_id" value="{{ n.id }}">
+                    <select name="status" class="form-control form-control-sm" style="max-width:200px;">
+                        {% for code, label in exam_statuses %}
+                        <option value="{{ code }}" {% if n.current_status == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-xs btn-primary">Update Status</button>
+                    <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">Manage Exams</a>
+                </form>
+
+                {% elif n.kind == 'staff_announcement' or n.kind == 'student_announcement' %}
+                <div class="d-flex flex-wrap align-items-center" style="gap:8px;">
+                    {% if n.is_unread %}
+                    <form method="post" action="{% url 'notification_quick_respond' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="{% if n.kind == 'staff_announcement' %}read_staff_announcement{% else %}read_student_announcement{% endif %}">
+                        <input type="hidden" name="item_id" value="{{ n.id }}">
+                        <button type="submit" class="btn btn-xs btn-success"><i class="fas fa-check mr-1"></i>Acknowledge / Mark Read</button>
+                    </form>
+                    {% else %}
+                    <span class="badge badge-success"><i class="fas fa-check mr-1"></i>Read</span>
+                    {% endif %}
+                    <a href="{{ n.link }}" class="btn btn-xs btn-outline-secondary ml-auto">All Announcements</a>
+                </div>
+
+                {% else %}
+                <div class="d-flex justify-content-end">
+                    <a href="{{ n.link }}" class="btn btn-xs btn-primary">
+                        {{ n.action_label|default:"Open" }} <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="card p-5 text-center text-muted">
+            <i class="fas fa-bell-slash fa-3x text-info mb-3"></i>
+            <h5 class="font-weight-bold text-dark">You're all caught up!</h5>
+            <p class="mb-0">No notifications match this filter right now.</p>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endblock content %}

@@ -20,10 +20,14 @@ from .models import (
     Examination,
     FeePayment,
     FeeStructure,
+    FeedbackStudent,
     LeaveReportStaff,
+    LeaveReportStudent,
+    NotificationStudent,
     Session,
     Staff,
     Student,
+    StudentMessage,
     StudentResult,
     StudentWelfareRecord,
     Subject,
@@ -525,3 +529,71 @@ class SixUserRolesTests(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
             self.assertContains(resp, "logo.jpeg")
+
+    def test_notification_center_and_quick_responses_across_roles(self):
+        # Student sends feedback and a message to Class Teacher
+        fb = FeedbackStudent.objects.create(
+            student=self.student, feedback="Can we get more library hours?", reply=""
+        )
+        msg = StudentMessage.objects.create(
+            sender=self.student_user,
+            receiver=self.class_teacher_user,
+            subject="Homework Question",
+            message="When is the lab report due?",
+        )
+        leave = LeaveReportStudent.objects.create(
+            student=self.student, date="2026-11-25", message="Medical checkup", status=0
+        )
+        notif = NotificationStudent.objects.create(
+            student=self.student, message="Assembly starts at 8:00 AM tomorrow."
+        )
+
+        # Principal sees student feedback in Notification Center & quick-replies inline
+        self.client.force_login(self.principal)
+        admin_nc = self.client.get(reverse("notification_center"))
+        self.assertEqual(admin_nc.status_code, 200)
+        self.assertContains(admin_nc, "Can we get more library hours?")
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {"action": "reply_student_feedback", "item_id": fb.id, "reply": "Extended until 6 PM."},
+        )
+        fb.refresh_from_db()
+        self.assertEqual(fb.reply, "Extended until 6 PM.")
+
+        # Class Teacher sees student message & leave, quick-replies & approves leave inline
+        self.client.force_login(self.class_teacher_user)
+        ct_nc = self.client.get(reverse("notification_center"))
+        self.assertEqual(ct_nc.status_code, 200)
+        self.assertContains(ct_nc, "Homework Question")
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {"action": "reply_message", "item_id": msg.id, "reply": "It is due Friday!"},
+        )
+        self.assertTrue(
+            StudentMessage.objects.filter(
+                sender=self.class_teacher_user, receiver=self.student_user, message="It is due Friday!"
+            ).exists()
+        )
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {"action": "decide_student_leave", "item_id": leave.id, "decision": "approve"},
+        )
+        leave.refresh_from_db()
+        self.assertEqual(leave.status, 1)
+
+        # Student sees teacher's reply & announcement, acknowledges announcement inline
+        self.client.force_login(self.student_user)
+        stu_nc = self.client.get(reverse("notification_center"))
+        self.assertEqual(stu_nc.status_code, 200)
+        self.assertContains(stu_nc, "It is due Friday!")
+        self.client.post(
+            reverse("notification_quick_respond"),
+            {"action": "read_student_announcement", "item_id": notif.id},
+        )
+        notif.refresh_from_db()
+        self.assertTrue(notif.is_read)
+
+        # DOS & Bursar Notification Centers render cleanly
+        for user in (self.dos, self.bursar):
+            self.client.force_login(user)
+            self.assertEqual(self.client.get(reverse("notification_center")).status_code, 200)
