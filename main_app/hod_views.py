@@ -144,7 +144,7 @@ def add_staff(request):
                 return render(request, 'hod_template/add_staff_template.html', context)
 
             if role in ('2', '6') and not course:
-                messages.error(request, "Please select a class/course for teacher roles.")
+                messages.error(request, "Please select a class for teacher roles.")
                 return render(request, 'hod_template/add_staff_template.html', context)
 
             passport = request.FILES.get('profile_pic') or None
@@ -472,7 +472,7 @@ def edit_course(request, course_id):
     context = {
         'form': form,
         'course_id': course_id,
-        'page_title': 'Edit Course'
+        'page_title': 'Edit Class'
     }
     if request.method == 'POST':
         if form.is_valid():
@@ -896,10 +896,10 @@ def delete_course(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     try:
         course.delete()
-        messages.success(request, "Course deleted successfully!")
+        messages.success(request, "Class deleted successfully!")
     except Exception:
         messages.error(
-            request, "Sorry, some students are assigned to this course already. Kindly change the affected student course and try again")
+            request, "Sorry, some students are assigned to this class already. Kindly change the affected student class and try again")
     return redirect(reverse('manage_course'))
 
 

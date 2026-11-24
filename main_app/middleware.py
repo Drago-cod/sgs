@@ -28,6 +28,7 @@ DOS_ALLOWED_HOD_VIEWS = {
     'add_course',
     'manage_course',
     'edit_course',
+    'delete_course',
     'add_subject',
     'manage_subject',
     'edit_subject',

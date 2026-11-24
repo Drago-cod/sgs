@@ -99,6 +99,11 @@ class StaffForm(CustomUserForm):
     def __init__(self, *args, allow_all_roles=True, **kwargs):
         super(StaffForm, self).__init__(*args, **kwargs)
         self.fields['course'].required = False
+        self.fields['course'].label = "Classes"
+        self.fields['course'].empty_label = "All Classes (School-Wide)"
+        self.fields['course'].help_text = (
+            "Select a class for teachers. Director of Studies (DOS), Bursar, and Principal automatically oversee all classes."
+        )
         if not allow_all_roles:
             self.fields['role'].choices = self.TEACHER_ONLY_ROLE_CHOICES
         if kwargs.get('instance') and getattr(kwargs.get('instance'), 'admin', None):
@@ -107,6 +112,9 @@ class StaffForm(CustomUserForm):
     class Meta(CustomUserForm.Meta):
         model = Staff
         fields = CustomUserForm.Meta.fields + ['role', 'course']
+        labels = {
+            'course': 'Classes',
+        }
 
 
 class DirectorOfStudiesForm(CustomUserForm):
@@ -134,6 +142,9 @@ class CourseForm(FormSettings):
     class Meta:
         fields = ['name']
         model = Course
+        labels = {
+            'name': 'Class Name',
+        }
 
 
 class SubjectForm(FormSettings):
@@ -144,6 +155,9 @@ class SubjectForm(FormSettings):
     class Meta:
         model = Subject
         fields = ['name', 'staff', 'course', 'period_number', 'attendance_type']
+        labels = {
+            'course': 'Class',
+        }
 
 
 class SessionForm(FormSettings):
@@ -383,6 +397,9 @@ class TimetableEntryForm(FormSettings):
     class Meta:
         model = TimetableEntry
         fields = ['course', 'subject', 'day_of_week', 'start_time', 'end_time', 'room']
+        labels = {
+            'course': 'Class',
+        }
         widgets = {
             'start_time': forms.TimeInput(attrs={'type': 'time'}),
             'end_time': forms.TimeInput(attrs={'type': 'time'}),
