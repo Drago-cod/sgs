@@ -57,8 +57,8 @@ class CustomUserForm(FormSettings):
 
 class StudentForm(CustomUserForm):
     phone_number = forms.CharField(label="Phone Number", max_length=15, widget=forms.TextInput(attrs={"class":"form-control"}))
-    course = forms.ModelChoiceField(queryset=Course.objects.all(), label="Course", widget=forms.Select(attrs={"class":"form-control"}))
-    session = forms.ModelChoiceField(queryset=Session.objects.all(), label="Session", widget=forms.Select(attrs={"class":"form-control"}))
+    course = forms.ModelChoiceField(queryset=Course.objects.all(), label="Class", widget=forms.Select(attrs={"class":"form-control"}))
+    session = forms.ModelChoiceField(queryset=Session.objects.all(), label="Term", widget=forms.Select(attrs={"class":"form-control"}))
     
     def __init__(self, *args, **kwargs):
         super(StudentForm, self).__init__(*args, **kwargs)
@@ -153,6 +153,10 @@ class SessionForm(FormSettings):
     class Meta:
         model = Session
         fields = '__all__'
+        labels = {
+            'start_year': 'Term Start Date',
+            'end_year': 'Term End Date',
+        }
         widgets = {
             'start_year': DateInput(attrs={'type': 'date'}),
             'end_year': DateInput(attrs={'type': 'date'}),
@@ -333,7 +337,7 @@ class StaffEditForm(CustomUserForm):
 class EditResultForm(FormSettings):
     session_list = Session.objects.all()
     session_year = forms.ModelChoiceField(
-        label="Session Year", queryset=session_list, required=True)
+        label="Term", queryset=session_list, required=True)
 
     def __init__(self, *args, **kwargs):
         super(EditResultForm, self).__init__(*args, **kwargs)
@@ -356,6 +360,10 @@ class ExaminationForm(FormSettings):
     class Meta:
         model = Examination
         fields = ['name', 'session', 'course', 'start_date', 'end_date', 'status', 'description']
+        labels = {
+            'session': 'Term',
+            'course': 'Class',
+        }
         widgets = {
             'start_date': DateInput(attrs={'type': 'date'}),
             'end_date': DateInput(attrs={'type': 'date'}),
@@ -445,6 +453,10 @@ class FeeStructureForm(FormSettings):
     class Meta:
         model = FeeStructure
         fields = ['course', 'session', 'title', 'amount', 'due_date', 'description']
+        labels = {
+            'course': 'Class',
+            'session': 'Term',
+        }
         widgets = {
             'due_date': DateInput(attrs={'type': 'date'}),
             'description': forms.Textarea(attrs={'rows': 2}),
@@ -481,6 +493,9 @@ class TeacherPerformanceFeedbackForm(FormSettings):
             'areas_for_improvement',
             'recommendations',
         ]
+        labels = {
+            'session': 'Term',
+        }
         widgets = {
             'strengths': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Key strengths observed...'}),
             'areas_for_improvement': forms.Textarea(attrs={'rows': 2, 'placeholder': 'Areas needing improvement (optional)...'}),

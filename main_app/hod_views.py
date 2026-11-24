@@ -520,12 +520,12 @@ def edit_subject(request, subject_id):
 
 def add_session(request):
     form = SessionForm(request.POST or None)
-    context = {'form': form, 'page_title': 'Add A Term'}
+    context = {'form': form, 'page_title': 'Add Term'}
     if request.method == 'POST':
         if form.is_valid():
             try:
                 form.save()
-                messages.success(request, "Session Created")
+                messages.success(request, "Term Created")
                 return redirect(reverse('add_session'))
             except Exception as e:
                 messages.error(request, 'Could Not Add ' + str(e))
@@ -536,7 +536,7 @@ def add_session(request):
 
 def manage_session(request):
     sessions = Session.objects.all()
-    context = {'sessions': sessions, 'page_title': 'Manage A Term'}
+    context = {'sessions': sessions, 'page_title': 'Manage Terms'}
     return render(request, "hod_template/manage_session.html", context)
 
 
@@ -544,16 +544,16 @@ def edit_session(request, session_id):
     instance = get_object_or_404(Session, id=session_id)
     form = SessionForm(request.POST or None, instance=instance)
     context = {'form': form, 'session_id': session_id,
-               'page_title': 'Edit Session'}
+               'page_title': 'Edit Term'}
     if request.method == 'POST':
         if form.is_valid():
             try:
                 form.save()
-                messages.success(request, "Session Updated")
+                messages.success(request, "Term Updated")
                 return redirect(reverse('edit_session', args=[session_id]))
             except Exception as e:
                 messages.error(
-                    request, "Session Could Not Be Updated " + str(e))
+                    request, "Term Could Not Be Updated " + str(e))
                 return render(request, "hod_template/edit_session_template.html", context)
         else:
             messages.error(request, "Invalid Form Submitted ")
@@ -914,10 +914,10 @@ def delete_session(request, session_id):
     session = get_object_or_404(Session, id=session_id)
     try:
         session.delete()
-        messages.success(request, "Session deleted successfully!")
+        messages.success(request, "Term deleted successfully!")
     except Exception:
         messages.error(
-            request, "There are students assigned to this session. Please move them to another session.")
+            request, "There are students assigned to this term. Please move them to another term.")
     return redirect(reverse('manage_session'))
 
 
