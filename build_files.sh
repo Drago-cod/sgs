@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 
-python3 -m pip install --no-cache-dir -r requirements.txt
-python3 manage.py collectstatic --noinput
-python3 manage.py migrate --noinput
-python3 manage.py ensure_admin
+PYTHON_BIN=$(command -v python || command -v python3)
+
+"$PYTHON_BIN" -m pip install --no-cache-dir -r requirements.txt
+"$PYTHON_BIN" manage.py collectstatic --noinput
+"$PYTHON_BIN" manage.py migrate --noinput
+"$PYTHON_BIN" manage.py ensure_admin
