@@ -6,6 +6,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>JASS — Sign In</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+        (function () {
+            try {
+                var saved = localStorage.getItem("sgs-theme");
+                if (saved === "dark" || saved === "light") {
+                    document.documentElement.setAttribute("data-theme", saved);
+                }
+            } catch (e) {}
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -364,6 +374,79 @@
             color: var(--sgs-navy);
         }
 
+        .auth-theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: 1px solid var(--sgs-border-strong);
+            background: var(--sgs-surface);
+            color: var(--sgs-navy);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(20, 36, 58, 0.08);
+            transition: background-color 180ms ease, color 180ms ease, transform 140ms ease;
+            z-index: 20;
+        }
+
+        .auth-theme-toggle:hover {
+            transform: translateY(-1px);
+        }
+
+        html[data-theme="dark"] {
+            --sgs-bg: #0B1220;
+            --sgs-surface: #111B2E;
+            --sgs-text: #F1F5F9;
+            --sgs-muted: #94A3B8;
+            --sgs-border: #1F2E46;
+            --sgs-border-strong: #2C3F5E;
+        }
+
+        html[data-theme="dark"] .auth-shell {
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+        }
+
+        html[data-theme="dark"] .auth-brand-panel {
+            background: linear-gradient(155deg, #091220 0%, #14243A 100%);
+        }
+
+        html[data-theme="dark"] .input-group-custom input {
+            background: #0D1627;
+            color: #F1F5F9;
+        }
+
+        html[data-theme="dark"] .btn-login {
+            background: #14B8A6;
+            border-color: #14B8A6;
+            color: #042F2E;
+        }
+
+        html[data-theme="dark"] .btn-login:hover {
+            background: #2DD4BF;
+            border-color: #2DD4BF;
+        }
+
+        html[data-theme="dark"] .login-footer strong,
+        html[data-theme="dark"] .forgot-link {
+            color: #2DD4BF;
+        }
+
+        html[data-theme="dark"] .auth-theme-toggle {
+            background: #162238;
+            border-color: #2C3F5E;
+            color: #FBBF24;
+        }
+
+        html[data-theme="dark"] .alert-danger {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.35);
+            color: #FCA5A5;
+        }
+
         @media (max-width: 820px) {
             .auth-shell {
                 grid-template-columns: 1fr;
@@ -383,6 +466,9 @@
 </head>
 
 <body class="hold-transition login-page">
+    <button type="button" id="authThemeToggle" class="auth-theme-toggle" title="Toggle Dark / Light Theme" aria-label="Toggle Dark / Light Theme">
+        <i class="fas fa-moon" id="authThemeIcon"></i>
+    </button>
     <div class="auth-shell">
         <div class="auth-brand-panel">
             <div>
@@ -502,6 +588,29 @@
                     var isHidden = pwd.type === "password";
                     pwd.type = isHidden ? "text" : "password";
                     btn.innerHTML = isHidden ? '<i class="far fa-eye-slash"></i>' : '<i class="far fa-eye"></i>';
+                });
+            }
+
+            var themeBtn = document.getElementById("authThemeToggle");
+            var themeIcon = document.getElementById("authThemeIcon");
+            function syncLoginTheme(theme) {
+                document.documentElement.setAttribute("data-theme", theme);
+                try { localStorage.setItem("sgs-theme", theme); } catch (e) {}
+                if (themeIcon) {
+                    themeIcon.className = theme === "dark" ? "fas fa-sun" : "fas fa-moon";
+                }
+                if (themeBtn) {
+                    var label = theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode";
+                    themeBtn.setAttribute("title", label);
+                    themeBtn.setAttribute("aria-label", label);
+                }
+            }
+            var initial = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+            syncLoginTheme(initial);
+            if (themeBtn) {
+                themeBtn.addEventListener("click", function () {
+                    var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+                    syncLoginTheme(next);
                 });
             }
         })();

@@ -6,6 +6,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>JASS — Students' Grading System</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script>
+      (function () {
+        try {
+          var saved = localStorage.getItem("sgs-theme");
+          if (saved === "dark" || saved === "light") {
+            document.documentElement.setAttribute("data-theme", saved);
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -45,6 +55,11 @@
         </ul>
 
         <ul class="navbar-nav ml-auto align-items-center" style="gap: 10px;">
+          <li class="nav-item">
+            <button type="button" id="sgsThemeToggle" class="nav-link sgs-theme-toggle" title="Toggle Dark / Light Theme" aria-label="Toggle Dark / Light Theme">
+              <i class="fas fa-moon" id="sgsThemeIcon"></i>
+            </button>
+          </li>
           {% if request.user.is_authenticated %}
           <li class="nav-item dropdown">
             <a class="nav-link sgs-notif-trigger" data-toggle="dropdown" href="#" title="Notifications & Quick Responses" aria-label="Notifications">
@@ -195,18 +210,98 @@
     <script src="{% static 'plugins/overlayScrollbars/js/jquery.overlayScrollbars.min.js' %}"></script>
     <script src="{% static 'dist/js/adminlte.js' %}"></script>
     <script>
-      // Global Chart.js enterprise defaults
-      if (window.Chart && Chart.defaults && Chart.defaults.global) {
-        Chart.defaults.global.defaultFontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
-        Chart.defaults.global.defaultFontColor = "#64748B";
-        Chart.defaults.global.defaultFontSize = 12;
-        Chart.defaults.global.tooltips.backgroundColor = "#14243A";
-        Chart.defaults.global.tooltips.titleFontColor = "#FFFFFF";
-        Chart.defaults.global.tooltips.bodyFontColor = "#E2E8F0";
-        Chart.defaults.global.tooltips.cornerRadius = 8;
-        Chart.defaults.global.tooltips.xPadding = 12;
-        Chart.defaults.global.tooltips.yPadding = 10;
-      }
+      // Theme Switcher + Live Chart.js Sync
+      (function () {
+        function getTheme() {
+          return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+        }
+
+        function syncChartsForTheme(theme) {
+          if (!window.Chart) return;
+          var isDark = theme === "dark";
+          var textColor = isDark ? "#94A3B8" : "#64748B";
+          var legendColor = isDark ? "#CBD5E1" : "#475569";
+          var gridColor = isDark ? "#1F2E46" : "#E5EAF1";
+          var surfaceColor = isDark ? "#111B2E" : "#FFFFFF";
+
+          if (Chart.defaults && Chart.defaults.global) {
+            Chart.defaults.global.defaultFontColor = textColor;
+            Chart.defaults.global.tooltips.backgroundColor = isDark ? "#091220" : "#14243A";
+          }
+
+          if (Chart.instances) {
+            Object.keys(Chart.instances).forEach(function (key) {
+              var chart = Chart.instances[key];
+              if (!chart || !chart.options) return;
+              if (chart.options.legend && chart.options.legend.labels) {
+                chart.options.legend.labels.fontColor = legendColor;
+              }
+              if (chart.options.scales) {
+                ["xAxes", "yAxes"].forEach(function (axisKey) {
+                  (chart.options.scales[axisKey] || []).forEach(function (axis) {
+                    if (axis.ticks) axis.ticks.fontColor = textColor;
+                    if (axis.gridLines && axis.gridLines.display !== false) {
+                      axis.gridLines.color = gridColor;
+                    }
+                  });
+                });
+              }
+              if (chart.config && (chart.config.type === "doughnut" || chart.config.type === "pie")) {
+                (chart.data.datasets || []).forEach(function (ds) {
+                  ds.borderColor = surfaceColor;
+                });
+              }
+              chart.update(0);
+            });
+          }
+        }
+
+        function updateThemeToggleUI(theme) {
+          var icon = document.getElementById("sgsThemeIcon");
+          var btn = document.getElementById("sgsThemeToggle");
+          if (icon) {
+            icon.className = theme === "dark" ? "fas fa-sun" : "fas fa-moon";
+          }
+          if (btn) {
+            var label = theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode";
+            btn.setAttribute("title", label);
+            btn.setAttribute("aria-label", label);
+          }
+        }
+
+        function applyTheme(theme) {
+          document.documentElement.setAttribute("data-theme", theme);
+          try { localStorage.setItem("sgs-theme", theme); } catch (e) {}
+          updateThemeToggleUI(theme);
+          syncChartsForTheme(theme);
+        }
+
+        // Global Chart.js enterprise defaults
+        if (window.Chart && Chart.defaults && Chart.defaults.global) {
+          Chart.defaults.global.defaultFontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+          Chart.defaults.global.defaultFontColor = getTheme() === "dark" ? "#94A3B8" : "#64748B";
+          Chart.defaults.global.defaultFontSize = 12;
+          Chart.defaults.global.tooltips.backgroundColor = "#14243A";
+          Chart.defaults.global.tooltips.titleFontColor = "#FFFFFF";
+          Chart.defaults.global.tooltips.bodyFontColor = "#E2E8F0";
+          Chart.defaults.global.tooltips.cornerRadius = 8;
+          Chart.defaults.global.tooltips.xPadding = 12;
+          Chart.defaults.global.tooltips.yPadding = 10;
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+          var initial = getTheme();
+          updateThemeToggleUI(initial);
+          var btn = document.getElementById("sgsThemeToggle");
+          if (btn) {
+            btn.addEventListener("click", function () {
+              applyTheme(getTheme() === "dark" ? "light" : "dark");
+            });
+          }
+          // Sync charts created inside page-level $(document).ready
+          setTimeout(function () { syncChartsForTheme(getTheme()); }, 60);
+        });
+      })();
 
       $(function () {
         // Auto-dismiss success/info flash alerts after 5 seconds
