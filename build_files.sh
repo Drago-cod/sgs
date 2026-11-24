@@ -1,4 +1,11 @@
 #!/bin/bash
+set -o errexit
+
+# Install dependencies
+python3 -m pip install --no-cache-dir -r requirements.txt
+
+# Collect static files
+python3 manage.py collectstatic --noinput#!/bin/bash
 
 # Install Python dependencies
 python3 -m pip install --no-cache-dir -r requirements.txt
