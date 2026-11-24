@@ -163,11 +163,19 @@ class SubjectForm(FormSettings):
 class SessionForm(FormSettings):
     def __init__(self, *args, **kwargs):
         super(SessionForm, self).__init__(*args, **kwargs)
+        self.fields['term_name'].required = False
+        self.fields['term_name'].choices = Session.TERM_CHOICES
+        if not self.initial.get('term_name') and not (self.instance and self.instance.pk):
+            self.initial['term_name'] = 'Term One'
+
+    def clean_term_name(self):
+        return self.cleaned_data.get('term_name') or 'Term One'
 
     class Meta:
         model = Session
-        fields = '__all__'
+        fields = ['term_name', 'start_year', 'end_year']
         labels = {
+            'term_name': 'Term',
             'start_year': 'Term Start Date',
             'end_year': 'Term End Date',
         }

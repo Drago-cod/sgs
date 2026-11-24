@@ -33,10 +33,23 @@ class CustomUserManager(UserManager):
 
 
 class Session(models.Model):
+    TERM_CHOICES = (
+        ("Term One", "Term One"),
+        ("Term Two", "Term Two"),
+        ("Term Three", "Term Three"),
+    )
+    term_name = models.CharField(
+        max_length=20,
+        choices=TERM_CHOICES,
+        default="Term One",
+        blank=True,
+    )
     start_year = models.DateField()
     end_year = models.DateField()
 
     def __str__(self):
+        if self.term_name:
+            return f"{self.term_name} ({self.start_year} to {self.end_year})"
         return "From " + str(self.start_year) + " to " + str(self.end_year)
 
 

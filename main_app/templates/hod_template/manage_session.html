@@ -21,6 +21,7 @@
                             <thead>
                                 <tr>
                                     <th>#</th>
+                                    <th>Term</th>
                                     <th>Term Start</th>
                                     <th>Term End</th>
                                     <th>Actions</th>
@@ -30,6 +31,7 @@
                                 {% for session in sessions %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
+                                    <td><span class="badge badge-info">{{ session.term_name|default:"Term One" }}</span></td>
                                     <td>{{session.start_year}}</td>
                                     <td>{{session.end_year}}</td>
                                     <td>
@@ -38,7 +40,7 @@
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="4" class="text-center text-muted py-4">No terms configured yet.</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted py-4">No terms configured yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>
