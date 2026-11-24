@@ -54,9 +54,10 @@ def doLogin(request, **kwargs):
     if request.method != 'POST':
         return HttpResponse("<h4>Denied</h4>")
     else:
-        # Authenticate
-        user = EmailBackend.authenticate(request, username=request.POST.get('email'), password=request.POST.get('password'))
-        if user != None:
+        email = (request.POST.get('email') or '').strip()
+        password = request.POST.get('password') or ''
+        user = authenticate(request, username=email, password=password)
+        if user is not None:
             login(request, user)
             return redirect(get_user_home_url(user))
         else:

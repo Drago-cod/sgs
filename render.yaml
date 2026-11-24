@@ -2,13 +2,13 @@ services:
   - type: web
     name: student-management-system
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: ./build_files.sh
     startCommand: gunicorn student_management_system.wsgi:application
     branch: main
-    region: oregon # You can change this if needed
-    plan: free # Change to 'starter' or 'pro' if you're on a paid plan
+    region: oregon
+    plan: free
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: student_management_system.settings
       - key: PYTHON_VERSION
-        value: 3.11.11
+        value: 3.12.7
