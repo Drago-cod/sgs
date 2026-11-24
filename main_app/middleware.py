@@ -10,6 +10,7 @@ ROLE_HOME_URLS = {
     '4': 'dos_home',
     '5': 'bursar_home',
     '6': 'class_teacher_dashboard',
+    '7': 'parent_guardian_portal',
 }
 
 # Shared academic, roster, attendance follow-up, and teacher performance views
@@ -91,8 +92,18 @@ class LoginCheckMiddleWare(MiddlewareMixin):
                     'main_app.staff_views',
                     'main_app.student_views',
                     'main_app.dos_views',
+                    'main_app.elearning_views',
                 ):
                     return redirect(reverse('bursar_home'))
+            elif role == '7':  # Parent / Guardian (read-only child monitoring)
+                if modulename in (
+                    'main_app.hod_views',
+                    'main_app.staff_views',
+                    'main_app.student_views',
+                    'main_app.dos_views',
+                    'main_app.bursar_views',
+                ):
+                    return redirect(reverse('parent_guardian_portal'))
             else:
                 return redirect(reverse('login_page'))
         else:

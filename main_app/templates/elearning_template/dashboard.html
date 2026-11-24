@@ -1,0 +1,559 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+
+    {% if dashboard_role == 'student' %}
+    <!-- STUDENT eLEARNING DASHBOARD -->
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Digital Learning Hub &middot; {{ student.course.name|default:"Unassigned Class" }} &middot; {{ academic_year }}</div>
+        <h2>Welcome, {{ request.user.get_full_name|default:request.user.email }}</h2>
+        <p>Term: <strong>{{ current_term|default:"Active Term" }}</strong> &middot; Track your subjects, live virtual classes, materials, quizzes, and academic progress.</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <a href="{% url 'elearning_classrooms' %}" class="btn btn-info btn-sm"><i class="fas fa-video mr-1"></i> Virtual Classrooms</a>
+        <a href="{% url 'elearning_assessments' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-clipboard-check mr-1"></i> Quizzes &amp; Exams</a>
+        <a href="{% url 'elearning_ai_assistant' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-sparkles mr-1"></i> AI Tutor</a>
+      </div>
+    </div>
+
+    {% if live_classes %}
+    <div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center mb-4">
+      <div>
+        <span class="badge badge-danger mr-2"><i class="fas fa-broadcast-tower mr-1"></i> LIVE NOW</span>
+        {% for lc in live_classes %}
+          <strong class="mr-2">{{ lc.title }} ({{ lc.subject.name }})</strong>
+          <a href="{% url 'elearning_classroom_room' lc.id %}" class="btn btn-primary btn-xs mr-3"><i class="fas fa-sign-in-alt mr-1"></i> Join Live Class</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- KPI Row -->
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-teal">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Overall Course Progress</div>
+              <h3 class="sgs-kpi-value">{{ progress_data.overall_percent }}<sup>%</sup></h3>
+              <div class="sgs-kpi-sub">{{ subjects|length }} enrolled subjects</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-chart-line"></i></div>
+          </div>
+          <a href="{% url 'elearning_analytics' %}" class="sgs-kpi-footer"><span>Progress Analytics</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-navy">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Attendance Rate</div>
+              <h3 class="sgs-kpi-value">{{ attendance_rate }}<sup>%</sup></h3>
+              <div class="sgs-kpi-sub">{{ att_present }} of {{ att_total }} sessions present</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-user-check"></i></div>
+          </div>
+          <a href="{% url 'student_view_attendance' %}" class="sgs-kpi-footer"><span>Attendance Record</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-blue">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Learning Hours</div>
+              <h3 class="sgs-kpi-value">{{ progress_data.learning_hours }}<sup style="font-size:0.85rem;"> hrs</sup></h3>
+              <div class="sgs-kpi-sub">Live lessons &amp; study activity</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-clock"></i></div>
+          </div>
+          <a href="{% url 'elearning_material_library' %}" class="sgs-kpi-footer"><span>Learning Library</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-amber">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Upcoming Deadlines</div>
+              <h3 class="sgs-kpi-value">{{ upcoming_assignments|length }}</h3>
+              <div class="sgs-kpi-sub">{{ upcoming_assessments|length }} active quizzes/tests</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-tasks"></i></div>
+          </div>
+          <a href="{% url 'student_assignments' %}" class="sgs-kpi-footer"><span>View Assignments</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enrolled Subjects & Meaningful Progress -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0"><i class="fas fa-book-open"></i> My Enrolled Subjects ({{ student.course.name|default:"—" }})</h3>
+        <a href="{% url 'elearning_material_library' %}" class="btn btn-xs btn-secondary">All Materials</a>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% for row in progress_data.subjects %}
+          <div class="col-xl-4 col-md-6 mb-3">
+            <div class="border rounded p-3 h-100 d-flex flex-column justify-content-between">
+              <div>
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <div>
+                    <h6 class="font-weight-bold mb-0">{{ row.subject.name }}</h6>
+                    <small class="text-muted">{{ row.subject.staff.admin.get_full_name }}</small>
+                  </div>
+                  <span class="badge badge-info">{{ row.progress_percent }}%</span>
+                </div>
+                <div class="progress mb-2" style="height:6px;">
+                  <div class="progress-bar bg-info" style="width:{{ row.progress_percent }}%;"></div>
+                </div>
+                <div class="d-flex flex-wrap text-muted small" style="gap:10px;">
+                  <span><i class="fas fa-layer-group mr-1"></i>{{ row.topics_total }} topics</span>
+                  <span><i class="fas fa-file-alt mr-1"></i>{{ row.materials_done }}/{{ row.materials_total }} notes</span>
+                  <span><i class="fas fa-tasks mr-1"></i>{{ row.assignments_done }}/{{ row.assignments_total }} tasks</span>
+                  <span><i class="fas fa-check-circle mr-1"></i>{{ row.quizzes_done }}/{{ row.quizzes_total }} quizzes</span>
+                </div>
+              </div>
+              <div class="mt-3 pt-2 border-top d-flex justify-content-between align-items-center">
+                <a href="{% url 'elearning_subject_portal' row.subject.id %}" class="btn btn-primary btn-xs">Open Subject Portal</a>
+                <a href="{% url 'elearning_discussions' %}?subject={{ row.subject.id }}" class="btn btn-secondary btn-xs"><i class="fas fa-comments mr-1"></i>Forum</a>
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center py-4 text-muted">No subjects enrolled for your class yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-video"></i> Upcoming Virtual Lessons</h3>
+            <a href="{% url 'elearning_classrooms' %}" class="btn btn-xs btn-secondary">View All</a>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for vc in upcoming_classes %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="font-weight-bold">{{ vc.title }}</div>
+                  <small class="text-muted">{{ vc.subject.name }} &middot; {{ vc.scheduled_start|date:"M d, H:i" }} ({{ vc.duration_minutes }} min)</small>
+                </div>
+                <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-info btn-xs">Enter</a>
+              </div>
+              {% empty %}
+              <div class="p-4 text-center text-muted small">No upcoming virtual lessons scheduled.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-film"></i> Recorded Lectures &amp; Recent Materials</h3>
+            <a href="{% url 'elearning_recordings' %}" class="btn btn-xs btn-secondary">Recordings</a>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for rec in recordings %}
+              <a href="{% url 'elearning_recordings' %}?subject={{ rec.subject_id }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge badge-primary mr-1">Video</span>
+                  <strong>{{ rec.title }}</strong>
+                  <small class="d-block text-muted">{{ rec.subject.name }} &middot; {{ rec.recorded_at|date:"M d, Y" }}</small>
+                </div>
+                <i class="fas fa-play-circle text-info"></i>
+              </a>
+              {% endfor %}
+              {% for mat in recent_materials|slice:":4" %}
+              <a href="{% url 'elearning_open_material' mat.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" target="_blank">
+                <div>
+                  <span class="badge badge-secondary mr-1">{{ mat.material_type }}</span>
+                  <strong>{{ mat.title }}</strong>
+                  <small class="d-block text-muted">{{ mat.subject.name }}</small>
+                </div>
+                <i class="fas fa-external-link-alt text-muted small"></i>
+              </a>
+              {% empty %}
+                {% if not recordings %}
+                <div class="p-4 text-center text-muted small">No recordings or materials uploaded yet.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-award"></i> Recently Published Results</h3>
+            <a href="{% url 'student_view_result' %}" class="btn btn-xs btn-secondary">Full Transcript</a>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for qr in recent_quiz_results %}
+              <a href="{% url 'elearning_attempt_result' qr.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <strong>{{ qr.assessment.title }}</strong>
+                  <small class="d-block text-muted">{{ qr.assessment.subject.name }}</small>
+                </div>
+                <span class="badge {% if qr.passed %}badge-success{% else %}badge-danger{% endif %}">{{ qr.percentage }}%</span>
+              </a>
+              {% endfor %}
+              {% for sr in recent_school_results|slice:":4" %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>{{ sr.subject.name }}</strong> <small class="text-muted">(School Result)</small></div>
+                <span class="badge badge-primary">Test: {{ sr.test }} / Exam: {{ sr.exam }}</span>
+              </div>
+              {% empty %}
+                {% if not recent_quiz_results %}
+                <div class="p-4 text-center text-muted small">No published results yet.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-bullhorn"></i> Subject Announcements &amp; Upcoming Exams</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for ann in announcements %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <span class="badge badge-info">{{ ann.subject.name }}</span>
+                  <small class="text-muted">{{ ann.created_at|date:"M d" }}</small>
+                </div>
+                <div class="font-weight-bold mt-1">{{ ann.title }}</div>
+                <div class="small text-muted">{{ ann.body|truncatechars:120 }}</div>
+              </div>
+              {% endfor %}
+              {% for ex in upcoming_exams %}
+              <div class="list-group-item">
+                <span class="badge badge-warning">Exam</span> <strong>{{ ex.name }}</strong>
+                <small class="d-block text-muted">{{ ex.start_date|date:"M d" }} – {{ ex.end_date|date:"M d, Y" }}</small>
+              </div>
+              {% empty %}
+                {% if not announcements %}
+                <div class="p-4 text-center text-muted small">No announcements or scheduled exams.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% elif dashboard_role == 'teacher' %}
+    <!-- TEACHER eLEARNING STUDIO -->
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Teacher eLearning Studio &middot; {{ current_term|default:"Active Term" }}</div>
+        <h2>Digital Teaching Workspace</h2>
+        <p>Launch live virtual classrooms, organize topics &amp; study resources, author quizzes, grade work, and use AI teaching tools.</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <a href="{% url 'elearning_classrooms' %}" class="btn btn-info btn-sm"><i class="fas fa-video mr-1"></i> Start / Schedule Class</a>
+        <a href="{% url 'elearning_assessments' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-clipboard-list mr-1"></i> Create Quiz / Exam</a>
+        <a href="{% url 'elearning_ai_assistant' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-robot mr-1"></i> Teacher AI Studio</a>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-navy">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Assigned Subjects</div>
+              <h3 class="sgs-kpi-value">{{ subjects|length }}</h3>
+              <div class="sgs-kpi-sub">{{ assigned_courses|length }} active class(es)</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-book-open"></i></div>
+          </div>
+          <a href="{% url 'elearning_material_library' %}" class="sgs-kpi-footer"><span>Materials Library</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-teal">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Live &amp; Upcoming Classes</div>
+              <h3 class="sgs-kpi-value">{{ live_classes|length }} / {{ upcoming_classes|length }}</h3>
+              <div class="sgs-kpi-sub">{{ total_recordings }} lecture recordings</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-video"></i></div>
+          </div>
+          <a href="{% url 'elearning_classrooms' %}" class="sgs-kpi-footer"><span>Virtual Classrooms</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-amber">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Pending Grading</div>
+              <h3 class="sgs-kpi-value">{{ pending_submissions|length|add:attempts_to_grade|length }}</h3>
+              <div class="sgs-kpi-sub">{{ pending_submissions|length }} assignments &middot; {{ attempts_to_grade|length }} exams</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-pen-nib"></i></div>
+          </div>
+          <a href="{% url 'elearning_assessments' %}" class="sgs-kpi-footer"><span>Review &amp; Grade</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-green">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Attendance &amp; Quiz Avg</div>
+              <h3 class="sgs-kpi-value">{{ class_att_rate }}<sup>%</sup></h3>
+              <div class="sgs-kpi-sub">Quiz Average: {{ avg_quiz_score }}%</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-chart-bar"></i></div>
+          </div>
+          <a href="{% url 'elearning_analytics' %}" class="sgs-kpi-footer"><span>Teacher Analytics</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Subject Portals -->
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0"><i class="fas fa-layer-group"></i> My Subject Portals</h3>
+        <a href="{% url 'elearning_question_bank' %}" class="btn btn-xs btn-secondary"><i class="fas fa-database mr-1"></i> Question Bank</a>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% for subj in subjects %}
+          <div class="col-xl-4 col-md-6 mb-3">
+            <a href="{% url 'elearning_subject_portal' subj.id %}" class="sgs-action-tile">
+              <div class="sgs-tile-icon tone-teal"><i class="fas fa-chalkboard"></i></div>
+              <div>
+                <div class="sgs-tile-title">{{ subj.name }}</div>
+                <div class="sgs-tile-desc">{{ subj.course.name }} &middot; Manage topics, notes, quizzes &amp; live lessons</div>
+              </div>
+            </a>
+          </div>
+          {% empty %}
+          <div class="col-12 text-center py-4 text-muted">No subjects assigned yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-calendar-day"></i> Today's Timetable &amp; Virtual Lessons</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for lc in live_classes %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div><span class="badge badge-danger mr-1">LIVE</span> <strong>{{ lc.title }}</strong> <small class="text-muted">({{ lc.course.name }})</small></div>
+                <a href="{% url 'elearning_classroom_room' lc.id %}" class="btn btn-primary btn-xs">Rejoin</a>
+              </div>
+              {% endfor %}
+              {% for tt in todays_timetable %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>{{ tt.subject.name }}</strong> <small class="text-muted">&middot; {{ tt.course.name }} ({{ tt.room|default:"Room TBA" }})</small></div>
+                <span class="badge badge-secondary">{{ tt.start_time|time:"H:i" }} – {{ tt.end_time|time:"H:i" }}</span>
+              </div>
+              {% endfor %}
+              {% for vc in upcoming_classes|slice:":4" %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div><strong>{{ vc.title }}</strong><small class="d-block text-muted">{{ vc.subject.name }} &middot; {{ vc.scheduled_start|date:"M d, H:i" }}</small></div>
+                <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-info btn-xs">Launch</a>
+              </div>
+              {% empty %}
+                {% if not todays_timetable and not live_classes %}
+                <div class="p-4 text-center text-muted small">No classes scheduled today.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6 mb-4">
+        <div class="card h-100">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-tasks"></i> Pending Grading &amp; Recent Activity</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for sub in pending_submissions|slice:":4" %}
+              <a href="{% url 'staff_assignment_submissions' sub.assignment_id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge badge-warning mr-1">Assignment</span>
+                  <strong>{{ sub.student.admin.get_full_name }}</strong> — {{ sub.assignment.title }}
+                </div>
+                <small class="text-muted">{{ sub.turned_in_at|date:"M d" }}</small>
+              </a>
+              {% endfor %}
+              {% for att in attempts_to_grade|slice:":4" %}
+              <a href="{% url 'elearning_assessment_manage' att.assessment_id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div>
+                  <span class="badge badge-info mr-1">Exam Review</span>
+                  <strong>{{ att.student.admin.get_full_name }}</strong> — {{ att.assessment.title }}
+                </div>
+                <small class="text-muted">{{ att.submitted_at|date:"M d" }}</small>
+              </a>
+              {% endfor %}
+              {% for act in recent_activity|slice:":4" %}
+              <div class="list-group-item small text-muted">
+                <i class="fas fa-eye text-info mr-1"></i> <strong>{{ act.student.admin.get_full_name }}</strong> accessed <em>{{ act.material.title }}</em> ({{ act.last_accessed_at|timesince }} ago)
+              </div>
+              {% empty %}
+                {% if not pending_submissions and not attempts_to_grade %}
+                <div class="p-4 text-center text-muted small">No pending grading items right now.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- ADMINISTRATOR / DOS COMMAND CENTER -->
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Institutional eLearning Governance</div>
+        <h2>eLearning Command Center</h2>
+        <p>Monitor live virtual classrooms, student &amp; teacher engagement, digital content, assessments, and storage across S1–S4.</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <a href="{% url 'elearning_analytics' %}" class="btn btn-info btn-sm"><i class="fas fa-chart-line mr-1"></i> Full Analytics &amp; Export</a>
+        <a href="{% url 'elearning_manage_guardians' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-user-friends mr-1"></i> Parent Links</a>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-teal">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Virtual Lessons</div>
+              <h3 class="sgs-kpi-value">{{ total_lessons }}</h3>
+              <div class="sgs-kpi-sub">{{ active_classrooms_count }} active live right now</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-video"></i></div>
+          </div>
+          <a href="{% url 'elearning_classrooms' %}" class="sgs-kpi-footer"><span>Monitor Classrooms</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-navy">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Active eLearning Users</div>
+              <h3 class="sgs-kpi-value">{{ active_students_count }} / {{ active_teachers_count }}</h3>
+              <div class="sgs-kpi-sub">Students ({{ total_students_count }}) &middot; Teachers ({{ total_teachers_count }})</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-users"></i></div>
+          </div>
+          <a href="{% url 'elearning_analytics' %}" class="sgs-kpi-footer"><span>Engagement Report</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-blue">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Assessments &amp; Tasks</div>
+              <h3 class="sgs-kpi-value">{{ total_assessments }} / {{ total_assignments }}</h3>
+              <div class="sgs-kpi-sub">{{ total_attempts }} quiz attempts &middot; {{ total_submissions }} submissions</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-clipboard-check"></i></div>
+          </div>
+          <a href="{% url 'elearning_assessments' %}" class="sgs-kpi-footer"><span>All Assessments</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="sgs-kpi-card kpi-amber">
+          <div class="sgs-kpi-body">
+            <div>
+              <div class="sgs-kpi-label">Storage &amp; Content</div>
+              <h3 class="sgs-kpi-value">{{ storage.total_mb }}<sup style="font-size:0.8rem;"> MB</sup></h3>
+              <div class="sgs-kpi-sub">{{ total_materials }} files &middot; {{ total_recordings }} recordings &middot; {{ classes_with_content }}/{{ total_classes }} classes</div>
+            </div>
+            <div class="sgs-kpi-icon"><i class="fas fa-hdd"></i></div>
+          </div>
+          <a href="{% url 'elearning_recordings' %}" class="sgs-kpi-footer"><span>Recordings &amp; Media</span><i class="fas fa-arrow-right"></i></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-lg-7 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-broadcast-tower"></i> Recent &amp; Live Virtual Classrooms</h3>
+            <a href="{% url 'elearning_classrooms' %}" class="btn btn-xs btn-secondary">Manage All</a>
+          </div>
+          <div class="card-body table-responsive p-0">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Lesson</th><th>Class / Subject</th><th>Teacher</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody>
+                {% for vc in recent_classrooms %}
+                <tr>
+                  <td class="font-weight-bold">{{ vc.title }}</td>
+                  <td>{{ vc.course.name }} &middot; {{ vc.subject.name }}</td>
+                  <td>{{ vc.teacher.admin.get_full_name }}</td>
+                  <td>
+                    <span class="badge {% if vc.status == 'LIVE' %}badge-danger{% elif vc.status == 'SCHEDULED' %}badge-info{% elif vc.status == 'ENDED' %}badge-success{% else %}badge-secondary{% endif %}">
+                      {{ vc.get_status_display }}
+                    </span>
+                  </td>
+                  <td>
+                    <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-xs btn-secondary">Observe</a>
+                    <a href="{% url 'elearning_classroom_attendance' vc.id %}" class="btn btn-xs btn-primary">Attendance</a>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-4 text-muted">No virtual classrooms created yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-book-open"></i> Subject Portals &amp; Alerts</h3>
+            <a href="{% url 'elearning_material_library' %}" class="btn btn-xs btn-secondary">All Files</a>
+          </div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for subj in subjects|slice:":6" %}
+              <a href="{% url 'elearning_subject_portal' subj.id %}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                <div><strong>{{ subj.name }}</strong> <small class="text-muted">({{ subj.course.name }})</small></div>
+                <i class="fas fa-chevron-right text-muted small"></i>
+              </a>
+              {% endfor %}
+              {% for al in system_alerts|slice:":3" %}
+              <a href="{% url 'admin_ai_attendance_dashboard' %}" class="list-group-item list-group-item-action">
+                <span class="badge badge-danger mr-1">Alert</span> <strong class="small">{{ al.title }}</strong>
+              </a>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+{% endblock content %}

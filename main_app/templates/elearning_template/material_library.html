@@ -1,0 +1,87 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-search"></i> Browse &amp; Filter Learning Resources</h3></div>
+      <div class="card-body">
+        <form method="get" class="row align-items-end">
+          <div class="col-md-4 mb-2">
+            <label class="small">Search Keyword</label>
+            <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Title, notes, description...">
+          </div>
+          <div class="col-md-3 mb-2">
+            <label class="small">Subject</label>
+            <select name="subject" class="form-control form-control-sm">
+              <option value="">All Subjects</option>
+              {% for s in subjects %}
+              <option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }} ({{ s.course.name }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 mb-2">
+            <label class="small">Format</label>
+            <select name="type" class="form-control form-control-sm">
+              <option value="">All Formats</option>
+              {% for code, label in material_types %}
+              <option value="{{ code }}" {% if selected_type == code %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 mb-2 d-flex" style="gap:6px;">
+            <button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="fas fa-filter mr-1"></i> Filter</button>
+            <a href="{% url 'elearning_material_library' %}" class="btn btn-secondary btn-sm">Reset</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0"><i class="fas fa-folder-open"></i> Available Materials</h3>
+        <span class="badge badge-primary">{{ materials|length }} Resource{{ materials|length|pluralize }}</span>
+      </div>
+      <div class="card-body table-responsive p-0">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Resource</th>
+              <th>Subject / Class</th>
+              <th>Topic</th>
+              <th>Format</th>
+              <th>Uploaded</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mat in materials %}
+            <tr>
+              <td>
+                <strong>{{ mat.title }}</strong>
+                {% if mat.id in completed_ids %}<span class="badge badge-success ml-1">Completed</span>{% endif %}
+                {% if mat.description %}<div class="small text-muted">{{ mat.description|truncatechars:90 }}</div>{% endif %}
+              </td>
+              <td>{{ mat.subject.name }} <small class="d-block text-muted">{{ mat.subject.course.name }}</small></td>
+              <td>{{ mat.topic.title|default:"General" }}</td>
+              <td><span class="badge badge-info">{{ mat.get_material_type_display }}</span></td>
+              <td class="small text-muted">{{ mat.created_at|date:"M d, Y" }}</td>
+              <td>
+                <a href="{% url 'elearning_open_material' mat.id %}" target="_blank" class="btn btn-xs btn-primary"><i class="fas fa-eye mr-1"></i>Open</a>
+                {% if mat.file and mat.allow_download %}
+                <a href="{% url 'elearning_open_material' mat.id %}?download=1" download class="btn btn-xs btn-secondary"><i class="fas fa-download"></i></a>
+                {% endif %}
+                <a href="{% url 'elearning_subject_portal' mat.subject_id %}" class="btn btn-xs btn-secondary">Portal</a>
+              </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-center py-5 text-muted">No learning materials match your filter.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

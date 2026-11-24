@@ -1,0 +1,118 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      {% if can_manage %}
+      <div class="col-lg-4 mb-4">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-upload"></i> Upload / Register Recording</h3></div>
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload">
+            <div class="card-body">
+              {% for field in form %}
+              <div class="form-group mb-2">
+                {% if field.name == 'is_published' or field.name == 'allow_download' %}
+                <div class="form-check">{{ field }} <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="small mb-1">{{ field.label }}</label>{{ field }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-primary btn-sm btn-block">Save Recording</button></div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="{% if can_manage %}col-lg-8{% else %}col-12{% endif %} mb-4">
+        <div class="card mb-3">
+          <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center" style="gap:8px;">
+            <form method="get" class="form-inline" style="gap:8px;">
+              <select name="subject" class="form-control form-control-sm" onchange="this.form.submit()">
+                <option value="">All Authorized Subjects</option>
+                {% for s in subjects %}
+                <option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }} ({{ s.course.name }})</option>
+                {% endfor %}
+              </select>
+            </form>
+            <span class="badge badge-primary">{{ recordings|length }} Recording{{ recordings|length|pluralize }}</span>
+          </div>
+        </div>
+
+        <div class="row">
+          {% for rec in recordings %}
+          <div class="col-md-6 mb-3">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center py-2">
+                <div>
+                  <span class="badge badge-info">{{ rec.subject.name }}</span>
+                  <span class="badge badge-secondary">{{ rec.course.name }}</span>
+                </div>
+                {% if can_manage %}
+                <span class="badge {% if rec.is_published %}badge-success{% else %}badge-warning{% endif %}">
+                  {% if rec.is_published %}Published{% else %}Restricted{% endif %}
+                </span>
+                {% endif %}
+              </div>
+              <div class="card-body">
+                <h6 class="font-weight-bold mb-1">{{ rec.title }}</h6>
+                <p class="small text-muted mb-2">{{ rec.description|truncatechars:110 }}</p>
+
+                {% if rec.video_file %}
+                <video id="vid_{{ rec.id }}" controls {% if not rec.allow_download %}controlsList="nodownload"{% endif %} style="width:100%;max-height:210px;border-radius:10px;background:#000;">
+                  <source src="{{ rec.video_file.url }}">
+                </video>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <div class="small">
+                    Speed:
+                    <select class="form-control form-control-sm d-inline-block" style="width:auto;" onchange="document.getElementById('vid_{{ rec.id }}').playbackRate=parseFloat(this.value)">
+                      <option value="0.75">0.75x</option>
+                      <option value="1" selected>1.0x</option>
+                      <option value="1.25">1.25x</option>
+                      <option value="1.5">1.5x</option>
+                      <option value="2">2.0x</option>
+                    </select>
+                  </div>
+                  {% if rec.allow_download or can_manage %}
+                  <a href="{{ rec.video_file.url }}" download class="btn btn-xs btn-secondary"><i class="fas fa-download mr-1"></i>Download</a>
+                  {% endif %}
+                </div>
+                {% elif rec.external_video_url %}
+                <a href="{{ rec.external_video_url }}" target="_blank" class="btn btn-info btn-sm btn-block"><i class="fas fa-play mr-1"></i>Watch Recording</a>
+                {% endif %}
+              </div>
+              <div class="card-footer d-flex flex-wrap justify-content-between align-items-center small text-muted" style="gap:6px;">
+                <span>{{ rec.recorded_at|date:"M d, Y" }} &middot; {{ rec.teacher.admin.get_full_name }}</span>
+                {% if can_manage %}
+                <div class="d-flex" style="gap:4px;">
+                  <form method="post" class="d-inline">
+                    {% csrf_token %}<input type="hidden" name="action" value="toggle_publish"><input type="hidden" name="recording_id" value="{{ rec.id }}">
+                    <button type="submit" class="btn btn-xs btn-secondary">{% if rec.is_published %}Unpublish{% else %}Publish{% endif %}</button>
+                  </form>
+                  <form method="post" class="d-inline">
+                    {% csrf_token %}<input type="hidden" name="action" value="toggle_download"><input type="hidden" name="recording_id" value="{{ rec.id }}">
+                    <button type="submit" class="btn btn-xs btn-secondary" title="Toggle Download"><i class="fas fa-download"></i></button>
+                  </form>
+                  <form method="post" class="d-inline" onsubmit="return confirm('Delete this recording permanently?')">
+                    {% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="recording_id" value="{{ rec.id }}">
+                    <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+                  </form>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="col-12"><div class="card p-5 text-center text-muted">No lecture recordings published yet.</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

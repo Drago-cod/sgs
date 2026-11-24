@@ -1,0 +1,126 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Automated Online Attendance &middot; {{ classroom.course.name }}</div>
+        <h2>{{ classroom.title }}</h2>
+        <p>{{ classroom.subject.name }} &middot; Threshold: {{ classroom.attendance_threshold_percent }}% participation &middot; Grace period: {{ classroom.late_grace_minutes }} min.</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <form method="post" action="{% url 'elearning_classroom_control' classroom.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="sync_attendance">
+          <button type="submit" class="btn btn-info btn-sm">
+            <i class="fas fa-sync-alt mr-1"></i> {% if classroom.attendance_synced %}Re-Sync to SGS Attendance{% else %}Sync to SGS Attendance{% endif %}
+          </button>
+        </form>
+        <a href="{% url 'elearning_classroom_room' classroom.id %}" class="btn btn-outline-light btn-sm"><i class="fas fa-video mr-1"></i> Back to Room</a>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-navy"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Enrolled</div><h3 class="sgs-kpi-value">{{ counts.enrolled }}</h3></div></div></div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-teal"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Live Now</div><h3 class="sgs-kpi-value">{{ counts.live_now }}</h3></div></div></div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-green"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Present</div><h3 class="sgs-kpi-value">{{ counts.present }}</h3></div></div></div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-amber"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Late / Partial</div><h3 class="sgs-kpi-value">{{ counts.late|add:counts.partial }}</h3></div></div></div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-red"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Absent</div><h3 class="sgs-kpi-value">{{ counts.absent }}</h3></div></div></div>
+      </div>
+      <div class="col-xl-2 col-md-4 col-6 mb-3">
+        <div class="sgs-kpi-card kpi-blue"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Attendance %</div><h3 class="sgs-kpi-value">{{ attendance_percent }}<sup>%</sup></h3></div></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="card-title mb-0"><i class="fas fa-clipboard-list"></i> Student Participation &amp; Exception Overrides</h3>
+        {% if classroom.attendance_synced %}
+        <span class="badge badge-success"><i class="fas fa-check-circle mr-1"></i>Synced with SGS Attendance</span>
+        {% else %}
+        <span class="badge badge-warning">Pending SGS Sync</span>
+        {% endif %}
+      </div>
+      <div class="card-body table-responsive p-0">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Joined / Left</th>
+              <th>Active Duration</th>
+              <th>Participation</th>
+              <th>Reconnects</th>
+              <th>Status</th>
+              <th>Teacher Override</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+            <tr>
+              <td>
+                <strong>{{ row.student.admin.get_full_name }}</strong>
+                {% if row.is_live %}<span class="badge badge-success ml-1">Online</span>{% endif %}
+                <small class="d-block text-muted">{{ row.student.admin.email }}</small>
+              </td>
+              <td class="small">
+                {% if row.record and row.record.joined_at %}
+                  In: {{ row.record.joined_at|date:"H:i:s" }}
+                  {% if row.record.left_at %}<br>Out: {{ row.record.left_at|date:"H:i:s" }}{% endif %}
+                {% else %}
+                  <span class="text-muted">Did not join</span>
+                {% endif %}
+              </td>
+              <td>{% if row.record %}{{ row.record.active_seconds }}s{% else %}0s{% endif %}</td>
+              <td>
+                {% if row.record %}
+                <div class="progress mb-1" style="height:6px;width:90px;">
+                  <div class="progress-bar bg-info" style="width:{{ row.record.participation_percent }}%;"></div>
+                </div>
+                <small>{{ row.record.participation_percent }}%</small>
+                {% else %}0%{% endif %}
+              </td>
+              <td>{% if row.record %}{{ row.record.reconnect_count }}{% else %}0{% endif %}</td>
+              <td>
+                {% if row.record %}
+                  <span class="badge {% if row.record.status == 'PRESENT' %}badge-success{% elif row.record.status == 'LATE' or row.record.status == 'PARTIAL' %}badge-warning{% elif row.record.status == 'EXCUSED' %}badge-info{% else %}badge-danger{% endif %}">
+                    {{ row.record.get_status_display }}
+                  </span>
+                  {% if row.record.teacher_override %}<small class="d-block text-muted">Override: {{ row.record.override_note|default:"Approved" }}</small>{% endif %}
+                {% else %}
+                  <span class="badge badge-danger">Absent</span>
+                {% endif %}
+              </td>
+              <td>
+                <form method="post" action="{% url 'elearning_classroom_control' classroom.id %}" class="form-inline" style="gap:4px;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="override_attendance">
+                  <input type="hidden" name="student_id" value="{{ row.student.id }}">
+                  <select name="status" class="form-control form-control-sm">
+                    {% for code, label in status_choices %}
+                    <option value="{{ code }}" {% if row.record and row.record.status == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <input type="text" name="note" class="form-control form-control-sm" placeholder="Reason..." style="max-width:110px;">
+                  <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

@@ -1,0 +1,596 @@
+{% extends 'main_app/base.html' %}
+{% load static %}
+{% block page_title %}{{ classroom.title }}{% endblock page_title %}
+
+{% block custom_css %}
+<style>
+  .vc-stage {
+    background: #091220;
+    border-radius: 14px;
+    overflow: hidden;
+    min-height: 540px;
+    position: relative;
+    border: 1px solid var(--sgs-border);
+  }
+  #jitsiMount {
+    width: 100%;
+    height: 540px;
+  }
+  .vc-wb-wrap {
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 1px solid var(--sgs-border);
+    overflow: hidden;
+  }
+  .vc-wb-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: var(--sgs-surface-subtle);
+    border-bottom: 1px solid var(--sgs-border);
+  }
+  #whiteboardCanvas {
+    width: 100%;
+    height: 460px;
+    display: block;
+    cursor: crosshair;
+    touch-action: none;
+    background: #FFFFFF;
+  }
+  .vc-chat-feed {
+    height: 360px;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--sgs-bg);
+  }
+  .vc-rec-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #EF4444;
+    display: inline-block;
+    animation: vcPulse 1.2s infinite;
+  }
+  @keyframes vcPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
+</style>
+{% endblock custom_css %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <!-- Top Live Status & Toolbar -->
+    <div class="card mb-3">
+      <div class="card-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center" style="gap:10px;">
+        <div class="d-flex flex-wrap align-items-center" style="gap:10px;">
+          <span class="badge {% if classroom.status == 'LIVE' %}badge-danger{% elif classroom.status == 'ENDED' %}badge-success{% else %}badge-info{% endif %}">
+            <i class="fas fa-broadcast-tower mr-1"></i> {{ classroom.get_status_display }}
+          </span>
+          <strong>{{ classroom.subject.name }} ({{ classroom.course.name }})</strong>
+          <span class="small text-muted"><i class="far fa-clock mr-1"></i><span id="vcTimer">00:00</span></span>
+          <span class="badge badge-success" id="vcConnBadge"><i class="fas fa-wifi mr-1"></i>Connected</span>
+          <span id="vcRecIndicator" class="badge badge-danger d-none"><span class="vc-rec-dot mr-1"></span>REC <span id="vcRecTime">00:00</span></span>
+          {% if request.user.user_type == '3' %}
+          <span class="badge badge-info" id="vcAttBadge"><i class="fas fa-user-check mr-1"></i>Attendance Tracked</span>
+          {% endif %}
+        </div>
+
+        <div class="d-flex flex-wrap align-items-center" style="gap:6px;">
+          {% if request.user.user_type == '3' %}
+          <button type="button" id="btnRaiseHand" class="btn btn-secondary btn-xs"><i class="fas fa-hand-paper mr-1"></i>Raise Hand</button>
+          {% endif %}
+          {% if is_host %}
+          <button type="button" id="btnLockRoom" class="btn btn-secondary btn-xs">
+            <i class="fas {% if classroom.is_locked %}fa-lock text-warning{% else %}fa-lock-open{% endif %} mr-1"></i>
+            <span id="lockLabel">{% if classroom.is_locked %}Unlock{% else %}Lock Room{% endif %}</span>
+          </button>
+          <button type="button" id="btnToggleWbPerm" class="btn btn-secondary btn-xs">
+            <i class="fas fa-pen mr-1"></i>
+            <span id="wbPermLabel">{% if classroom.allow_student_whiteboard %}Students Can Draw{% else %}Teacher-Only Board{% endif %}</span>
+          </button>
+          <button type="button" id="btnStartRec" class="btn btn-info btn-xs"><i class="fas fa-record-vinyl mr-1"></i>Record Lesson</button>
+          <button type="button" id="btnPauseRec" class="btn btn-secondary btn-xs d-none"><i class="fas fa-pause mr-1"></i>Pause</button>
+          <button type="button" id="btnStopRec" class="btn btn-danger btn-xs d-none"><i class="fas fa-stop mr-1"></i>Stop &amp; Save</button>
+          <a href="{% url 'elearning_classroom_attendance' classroom.id %}" target="_blank" class="btn btn-secondary btn-xs"><i class="fas fa-clipboard-check mr-1"></i>Attendance</a>
+          <form method="post" action="{% url 'elearning_classroom_control' classroom.id %}" class="d-inline" onsubmit="return confirm('End this lesson and synchronize attendance to SGS?')">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="end">
+            <button type="submit" class="btn btn-danger btn-xs"><i class="fas fa-phone-slash mr-1"></i>End &amp; Sync</button>
+          </form>
+          {% else %}
+          <a href="{% url 'elearning_classrooms' %}" id="btnExitClass" class="btn btn-danger btn-xs"><i class="fas fa-sign-out-alt mr-1"></i>Exit Class</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Recording Consent & Privacy Notice -->
+    <div id="recConsentBanner" class="alert alert-info py-2 small d-none mb-3">
+      <i class="fas fa-shield-alt mr-1"></i>
+      <strong>Recording Notice:</strong> This virtual lesson is being recorded for authorized {{ classroom.course.name }} educational review in accordance with JASS privacy policy.
+    </div>
+
+    <div class="row">
+      <!-- Main Stage: WebRTC Video + Digital Whiteboard Tabs -->
+      <div class="col-lg-8 mb-4">
+        <div class="card">
+          <div class="card-header d-flex flex-wrap justify-content-between align-items-center py-2">
+            <ul class="nav nav-pills card-header-pills" id="stageTabs" role="tablist">
+              <li class="nav-item">
+                <a class="nav-link active py-1 px-3 small font-weight-bold" data-toggle="tab" href="#tabVideo" role="tab">
+                  <i class="fas fa-video mr-1"></i> Live Video &amp; Screen Share
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link py-1 px-3 small font-weight-bold" data-toggle="tab" href="#tabWhiteboard" role="tab">
+                  <i class="fas fa-chalkboard mr-1"></i> Digital Whiteboard
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link py-1 px-3 small font-weight-bold" data-toggle="tab" href="#tabMaterials" role="tab">
+                  <i class="fas fa-file-pdf mr-1"></i> Lesson Materials ({{ lesson_materials|length }})
+                </a>
+              </li>
+            </ul>
+            <a href="https://{{ jitsi_domain }}/{{ classroom.room_code }}" target="_blank" rel="noopener" class="btn btn-xs btn-secondary">
+              <i class="fas fa-external-link-alt mr-1"></i> Pop-Out Video
+            </a>
+          </div>
+
+          <div class="card-body p-2">
+            <div class="tab-content">
+              <!-- TAB 1: Real WebRTC Conferencing via Jitsi Meet External API -->
+              <div class="tab-pane fade show active" id="tabVideo" role="tabpanel">
+                <div class="vc-stage">
+                  <div id="jitsiMount"></div>
+                </div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center px-2 pt-2 small text-muted">
+                  <span><i class="fas fa-lock text-success mr-1"></i> Encrypted WebRTC Room: <code>{{ classroom.room_code }}</code> (Camera optional for attendance)</span>
+                  <span>Host: <strong>{{ classroom.teacher.admin.get_full_name }}</strong></span>
+                </div>
+              </div>
+
+              <!-- TAB 2: Interactive Real-Time Digital Whiteboard -->
+              <div class="tab-pane fade" id="tabWhiteboard" role="tabpanel">
+                <div class="vc-wb-wrap">
+                  <div class="vc-wb-toolbar">
+                    <button type="button" class="btn btn-xs btn-primary wb-tool" data-tool="pen"><i class="fas fa-pen mr-1"></i>Pen</button>
+                    <button type="button" class="btn btn-xs btn-secondary wb-tool" data-tool="line"><i class="fas fa-slash mr-1"></i>Line</button>
+                    <button type="button" class="btn btn-xs btn-secondary wb-tool" data-tool="rect"><i class="far fa-square mr-1"></i>Rect</button>
+                    <button type="button" class="btn btn-xs btn-secondary wb-tool" data-tool="circle"><i class="far fa-circle mr-1"></i>Circle</button>
+                    <button type="button" class="btn btn-xs btn-secondary wb-tool" data-tool="text"><i class="fas fa-font mr-1"></i>Text</button>
+                    <button type="button" class="btn btn-xs btn-secondary wb-tool" data-tool="eraser"><i class="fas fa-eraser mr-1"></i>Erase</button>
+                    <input type="color" id="wbColor" value="#14243A" title="Color" style="width:30px;height:28px;border:none;cursor:pointer;">
+                    <input type="range" id="wbSize" min="1" max="16" value="3" title="Brush size" style="width:75px;">
+                    <div class="ml-auto d-flex" style="gap:6px;">
+                      <button type="button" id="wbClear" class="btn btn-xs btn-danger"><i class="fas fa-trash mr-1"></i>Clear</button>
+                      <button type="button" id="wbSaveSync" class="btn btn-xs btn-info"><i class="fas fa-share-alt mr-1"></i>Save &amp; Share</button>
+                      <button type="button" id="wbDownload" class="btn btn-xs btn-secondary"><i class="fas fa-download mr-1"></i>PNG</button>
+                    </div>
+                  </div>
+                  <canvas id="whiteboardCanvas" width="960" height="460"></canvas>
+                </div>
+              </div>
+
+              <!-- TAB 3: Supporting Materials -->
+              <div class="tab-pane fade p-2" id="tabMaterials" role="tabpanel">
+                {% if classroom.learning_objectives %}
+                <div class="alert alert-info small mb-3">
+                  <strong>Learning Objectives:</strong> {{ classroom.learning_objectives }}
+                </div>
+                {% endif %}
+                {% if classroom.supporting_material %}
+                <div class="border rounded p-3 mb-3 d-flex justify-content-between align-items-center">
+                  <div><strong>Lesson Attachment</strong><div class="small text-muted">Uploaded specifically for this virtual class</div></div>
+                  <a href="{{ classroom.supporting_material.url }}" target="_blank" class="btn btn-primary btn-xs"><i class="fas fa-file-download mr-1"></i>Open Presentation / File</a>
+                </div>
+                {% endif %}
+                <div class="list-group list-group-flush">
+                  {% for m in lesson_materials %}
+                  <a href="{% url 'elearning_open_material' m.id %}" target="_blank" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                    <div><span class="badge badge-secondary mr-1">{{ m.material_type }}</span><strong>{{ m.title }}</strong></div>
+                    <i class="fas fa-external-link-alt text-muted small"></i>
+                  </a>
+                  {% empty %}
+                  <div class="p-4 text-center text-muted small">No subject materials attached yet.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Side Panel: Participants + Live Chat & Q&A -->
+      <div class="col-lg-4 mb-4">
+        <div class="card mb-3">
+          <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-users"></i> Participants</h3>
+            <span class="badge badge-primary" id="vcParticipantCount">0 / {{ enrolled_count }}</span>
+          </div>
+          <div class="card-body p-0" style="max-height:200px;overflow-y:auto;" id="vcParticipantsList">
+            <div class="p-3 text-center text-muted small">Syncing active attendees...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header py-2">
+            <h3 class="card-title mb-0"><i class="fas fa-comments"></i> Classroom Chat &amp; Q&amp;A</h3>
+          </div>
+          <div class="vc-chat-feed" id="vcChatFeed"></div>
+          <div class="card-footer p-2">
+            <form id="vcChatForm">
+              {% csrf_token %}
+              <div class="input-group input-group-sm mb-1">
+                <input type="text" id="vcChatInput" class="form-control" placeholder="Ask a question or post in class chat..." required>
+                <div class="input-group-append">
+                  <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i></button>
+                </div>
+              </div>
+              <div class="form-check small">
+                <input type="checkbox" class="form-check-input" id="vcIsQuestion">
+                <label class="form-check-label text-muted" for="vcIsQuestion">Mark as Question for Teacher</label>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script src="https://{{ jitsi_domain }}/external_api.js"></script>
+<script>
+(function () {
+  var csrfToken = "{{ csrf_token }}";
+  var isHost = {{ is_host|yesno:"true,false" }};
+  var allowStudentWb = {{ classroom.allow_student_whiteboard|yesno:"true,false" }};
+  var roomCode = "{{ classroom.room_code|escapejs }}";
+  var displayName = "{{ display_name|escapejs }}";
+  var userEmail = "{{ request.user.email|escapejs }}";
+  var jitsiDomain = "{{ jitsi_domain|escapejs }}";
+
+  // 1. REAL-TIME WEBRTC VIA JITSI MEET EXTERNAL API
+  var jitsiApi = null;
+  try {
+    if (window.JitsiMeetExternalAPI) {
+      jitsiApi = new JitsiMeetExternalAPI(jitsiDomain, {
+        roomName: roomCode,
+        parentNode: document.getElementById("jitsiMount"),
+        width: "100%",
+        height: 540,
+        userInfo: { displayName: displayName, email: userEmail },
+        configOverwrite: {
+          startWithAudioMuted: {{ classroom.mute_on_entry|yesno:"true,false" }},
+          startWithVideoMuted: false,
+          prejoinPageEnabled: false,
+          disableDeepLinking: true,
+          enableWelcomePage: false
+        },
+        interfaceConfigOverwrite: {
+          TOOLBAR_BUTTONS: [
+            "microphone", "camera", "desktop", "fullscreen", "fodeviceselection",
+            "hangup", "chat", "raisehand", "tileview", "videoquality",
+            "settings", "participants-pane", "reactions"
+          ]
+        }
+      });
+    } else {
+      document.getElementById("jitsiMount").innerHTML =
+        '<div class="p-5 text-center text-white"><h5>WebRTC Engine Ready</h5>' +
+        '<p class="small text-muted">Click Pop-Out Video above to launch the encrypted WebRTC classroom directly.</p>' +
+        '<a href="https://' + jitsiDomain + '/' + roomCode + '" target="_blank" class="btn btn-info btn-sm">Launch Video Room</a></div>';
+    }
+  } catch (err) {
+    console.warn("Jitsi init notice:", err);
+  }
+
+  // 2. LIVE LESSON DURATION TIMER
+  var elapsed = 0;
+  setInterval(function () {
+    elapsed++;
+    var m = String(Math.floor(elapsed / 60)).padStart(2, "0");
+    var s = String(elapsed % 60).padStart(2, "0");
+    var el = document.getElementById("vcTimer");
+    if (el) el.textContent = m + ":" + s;
+  }, 1000);
+
+  // 3. SERVER-SIDE AUTOMATED ATTENDANCE HEARTBEAT (30s) & PARTICIPANT SYNC
+  function sendHeartbeat() {
+    $.post("{% url 'elearning_classroom_heartbeat' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken
+    }).done(function (data) {
+      $("#vcConnBadge").removeClass("badge-danger").addClass("badge-success").html('<i class="fas fa-wifi mr-1"></i>Connected');
+      allowStudentWb = !!data.allow_student_whiteboard;
+      if (data.removed) {
+        alert("You have been removed from this classroom by the host.");
+        window.location.href = "{% url 'elearning_classrooms' %}";
+        return;
+      }
+      if (data.attendance_status && $("#vcAttBadge").length) {
+        $("#vcAttBadge").html('<i class="fas fa-user-check mr-1"></i>' + data.attendance_status + ' (' + data.participation_percent + '%)');
+      }
+      renderParticipants(data.participants || []);
+    }).fail(function () {
+      $("#vcConnBadge").removeClass("badge-success").addClass("badge-danger").html('<i class="fas fa-exclamation-triangle mr-1"></i>Reconnecting...');
+    });
+  }
+
+  function renderParticipants(list) {
+    $("#vcParticipantCount").text(list.length + " / {{ enrolled_count }}");
+    if (!list.length) {
+      $("#vcParticipantsList").html('<div class="p-3 text-center text-muted small">Waiting for students to join...</div>');
+      return;
+    }
+    var html = '<ul class="list-group list-group-flush">';
+    list.forEach(function (p) {
+      html += '<li class="list-group-item py-2 px-3 d-flex justify-content-between align-items-center">';
+      html += '<div><span class="mr-1" style="color:' + (p.online ? '#16A34A' : '#94A3B8') + ';">&#9679;</span>';
+      html += '<strong class="small">' + $("<div>").text(p.name).html() + '</strong>';
+      if (p.hand_raised) html += ' <span class="badge badge-warning ml-1"><i class="fas fa-hand-paper"></i></span>';
+      html += '<div class="text-muted" style="font-size:0.72rem;">' + p.status + ' &middot; ' + p.active_minutes + ' min (' + p.participation_percent + '%)</div></div>';
+      if (isHost) {
+        html += '<div class="d-flex" style="gap:4px;">';
+        html += '<button class="btn btn-xs btn-secondary vc-host-act" data-act="mute_student" data-sid="' + p.student_id + '" title="Mute/Unmute"><i class="fas fa-microphone-slash"></i></button>';
+        html += '<button class="btn btn-xs btn-danger vc-host-act" data-act="remove_student" data-sid="' + p.student_id + '" title="Remove"><i class="fas fa-user-times"></i></button>';
+        html += '</div>';
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+    $("#vcParticipantsList").html(html);
+  }
+
+  sendHeartbeat();
+  setInterval(sendHeartbeat, 25000);
+
+  window.addEventListener("beforeunload", function () {
+    if (navigator.sendBeacon) {
+      var fd = new FormData();
+      fd.append("csrfmiddlewaretoken", csrfToken);
+      navigator.sendBeacon("{% url 'elearning_classroom_leave' classroom.id %}", fd);
+    }
+  });
+
+  // 4. HOST & STUDENT CONTROLS
+  $(document).on("click", ".vc-host-act", function () {
+    var act = $(this).data("act");
+    var sid = $(this).data("sid");
+    $.post("{% url 'elearning_classroom_control' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken, action: act, student_id: sid
+    }).done(sendHeartbeat);
+  });
+
+  $("#btnLockRoom").on("click", function () {
+    $.post("{% url 'elearning_classroom_control' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken, action: "toggle_lock"
+    }).done(function (d) {
+      $("#lockLabel").text(d.is_locked ? "Unlock" : "Lock Room");
+    });
+  });
+
+  $("#btnToggleWbPerm").on("click", function () {
+    $.post("{% url 'elearning_classroom_control' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken, action: "toggle_whiteboard"
+    }).done(function (d) {
+      allowStudentWb = d.allow_student_whiteboard;
+      $("#wbPermLabel").text(allowStudentWb ? "Students Can Draw" : "Teacher-Only Board");
+    });
+  });
+
+  $("#btnRaiseHand").on("click", function () {
+    $.post("{% url 'elearning_classroom_control' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken, action: "toggle_hand"
+    }).done(function (d) {
+      $("#btnRaiseHand").toggleClass("btn-warning", d.hand_raised).toggleClass("btn-secondary", !d.hand_raised);
+      sendHeartbeat();
+    });
+  });
+
+  // 5. CLASSROOM CHAT & Q&A
+  function loadChat() {
+    $.get("{% url 'elearning_classroom_chat' classroom.id %}").done(function (data) {
+      var html = "";
+      (data.messages || []).forEach(function (m) {
+        html += '<div class="mb-2 p-2 rounded" style="background:var(--sgs-surface);border:1px solid var(--sgs-border);">';
+        html += '<div class="d-flex justify-content-between align-items-center mb-1">';
+        html += '<strong class="small">' + $("<div>").text(m.sender).html() + (m.is_teacher ? ' <span class="badge badge-info ml-1">Teacher</span>' : '') + '</strong>';
+        html += '<small class="text-muted" style="font-size:0.7rem;">' + m.time + '</small></div>';
+        if (m.is_question) html += '<span class="badge badge-warning mb-1">Question</span> ';
+        html += '<div class="small">' + $("<div>").text(m.message).html() + '</div></div>';
+      });
+      $("#vcChatFeed").html(html || '<div class="text-center text-muted small py-4">No messages yet. Say hello!</div>');
+    });
+  }
+  loadChat();
+  setInterval(loadChat, 6000);
+
+  $("#vcChatForm").on("submit", function (e) {
+    e.preventDefault();
+    var msg = $("#vcChatInput").val().trim();
+    if (!msg) return;
+    $.post("{% url 'elearning_classroom_chat' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken,
+      message: msg,
+      is_question: $("#vcIsQuestion").is(":checked") ? "1" : "0"
+    }).done(function () {
+      $("#vcChatInput").val("");
+      $("#vcIsQuestion").prop("checked", false);
+      loadChat();
+    });
+  });
+
+  // 6. DIGITAL WHITEBOARD (Pen, Line, Rect, Circle, Text, Eraser, Save/Sync, Download)
+  var canvas = document.getElementById("whiteboardCanvas");
+  var ctx = canvas.getContext("2d");
+  var tool = "pen", drawing = false, startX = 0, startY = 0, snapshot = null;
+
+  function canDraw() { return isHost || allowStudentWb; }
+
+  $(".wb-tool").on("click", function () {
+    tool = $(this).data("tool");
+    $(".wb-tool").removeClass("btn-primary").addClass("btn-secondary");
+    $(this).removeClass("btn-secondary").addClass("btn-primary");
+  });
+
+  function getPos(e) {
+    var rect = canvas.getBoundingClientRect();
+    var cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+    var cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+    return { x: cx * (canvas.width / rect.width), y: cy * (canvas.height / rect.height) };
+  }
+
+  function startDraw(e) {
+    if (!canDraw()) return;
+    var pos = getPos(e);
+    if (tool === "text") {
+      var txt = prompt("Enter text for whiteboard:");
+      if (txt) {
+        ctx.fillStyle = document.getElementById("wbColor").value;
+        ctx.font = "600 " + (14 + parseInt(document.getElementById("wbSize").value, 10) * 2) + "px Inter, sans-serif";
+        ctx.fillText(txt, pos.x, pos.y);
+      }
+      return;
+    }
+    drawing = true;
+    startX = pos.x; startY = pos.y;
+    snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+  }
+
+  function moveDraw(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    var pos = getPos(e);
+    ctx.lineWidth = tool === "eraser" ? 20 : parseInt(document.getElementById("wbSize").value, 10);
+    ctx.strokeStyle = tool === "eraser" ? "#FFFFFF" : document.getElementById("wbColor").value;
+    ctx.lineCap = "round";
+
+    if (tool === "pen" || tool === "eraser") {
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    } else {
+      ctx.putImageData(snapshot, 0, 0);
+      ctx.beginPath();
+      if (tool === "line") {
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(pos.x, pos.y);
+      } else if (tool === "rect") {
+        ctx.strokeRect(startX, startY, pos.x - startX, pos.y - startY);
+      } else if (tool === "circle") {
+        var r = Math.hypot(pos.x - startX, pos.y - startY);
+        ctx.arc(startX, startY, r, 0, Math.PI * 2);
+      }
+      ctx.stroke();
+    }
+  }
+
+  function endDraw() { drawing = false; }
+
+  canvas.addEventListener("mousedown", startDraw);
+  canvas.addEventListener("mousemove", moveDraw);
+  window.addEventListener("mouseup", endDraw);
+  canvas.addEventListener("touchstart", startDraw);
+  canvas.addEventListener("touchmove", moveDraw);
+  canvas.addEventListener("touchend", endDraw);
+
+  $("#wbClear").on("click", function () {
+    if (!canDraw()) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  });
+
+  $("#wbSaveSync").on("click", function () {
+    if (!canDraw()) { alert("Teacher-only whiteboard mode is enabled."); return; }
+    $.post("{% url 'elearning_classroom_whiteboard' classroom.id %}", {
+      csrfmiddlewaretoken: csrfToken,
+      whiteboard_data: canvas.toDataURL("image/png")
+    }).done(function () { alert("Whiteboard saved and shared with the class!"); });
+  });
+
+  $("#wbDownload").on("click", function () {
+    var link = document.createElement("a");
+    link.download = "whiteboard-{{ classroom.room_code }}.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  });
+
+  function pullWhiteboard() {
+    $.get("{% url 'elearning_classroom_whiteboard' classroom.id %}").done(function (d) {
+      if (d.whiteboard_data && !drawing) {
+        var img = new Image();
+        img.onload = function () { ctx.clearRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0); };
+        img.src = d.whiteboard_data;
+      }
+    });
+  }
+  pullWhiteboard();
+  if (!isHost) setInterval(pullWhiteboard, 10000);
+
+  // 7. BROWSER LECTURE RECORDING (MediaRecorder -> Direct Secure Upload)
+  var mediaRecorder = null, recChunks = [], recSeconds = 0, recTimer = null;
+  $("#btnStartRec").on("click", async function () {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+      alert("Screen recording is not supported by this browser.");
+      return;
+    }
+    try {
+      var stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      recChunks = []; recSeconds = 0;
+      mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("video/webm") ? "video/webm" : "" });
+      mediaRecorder.ondataavailable = function (ev) { if (ev.data.size > 0) recChunks.push(ev.data); };
+      mediaRecorder.onstop = function () {
+        clearInterval(recTimer);
+        stream.getTracks().forEach(function (t) { t.stop(); });
+        var blob = new Blob(recChunks, { type: "video/webm" });
+        var fd = new FormData();
+        fd.append("csrfmiddlewaretoken", csrfToken);
+        fd.append("video_file", blob, "lecture_{{ classroom.id }}.webm");
+        fd.append("duration_seconds", recSeconds);
+        fd.append("title", "{{ classroom.title|escapejs }} (Recorded)");
+        fetch("{% url 'elearning_upload_recording' classroom.id %}", { method: "POST", body: fd })
+          .then(function (r) { return r.json(); })
+          .then(function (res) {
+            if (res.ok) alert("Recording uploaded safely! You can publish it in Lecture Recordings.");
+            else alert(res.error || "Upload failed.");
+          });
+        $("#vcRecIndicator, #recConsentBanner, #btnPauseRec, #btnStopRec").addClass("d-none");
+        $("#btnStartRec").removeClass("d-none");
+      };
+      mediaRecorder.start(1000);
+      $("#vcRecIndicator, #recConsentBanner, #btnPauseRec, #btnStopRec").removeClass("d-none");
+      $("#btnStartRec").addClass("d-none");
+      recTimer = setInterval(function () {
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+          recSeconds++;
+          $("#vcRecTime").text(String(Math.floor(recSeconds / 60)).padStart(2, "0") + ":" + String(recSeconds % 60).padStart(2, "0"));
+        }
+      }, 1000);
+    } catch (e) {
+      console.warn("Recording cancelled:", e);
+    }
+  });
+
+  $("#btnPauseRec").on("click", function () {
+    if (!mediaRecorder) return;
+    if (mediaRecorder.state === "recording") {
+      mediaRecorder.pause();
+      $(this).html('<i class="fas fa-play mr-1"></i>Resume');
+    } else if (mediaRecorder.state === "paused") {
+      mediaRecorder.resume();
+      $(this).html('<i class="fas fa-pause mr-1"></i>Pause');
+    }
+  });
+
+  $("#btnStopRec").on("click", function () {
+    if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  });
+})();
+</script>
+{% endblock custom_js %}

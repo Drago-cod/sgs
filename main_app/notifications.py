@@ -35,6 +35,8 @@ from .models import (
     Subject,
     TeacherPerformanceFeedback,
     TimetableEntry,
+    VirtualClassroom,
+    OnlineAssessment,
 )
 
 
@@ -498,6 +500,24 @@ def get_user_notifications(user, limit=30):
                 })
 
             if student.course_id:
+                for vc in VirtualClassroom.objects.filter(
+                    course=student.course, status="LIVE"
+                ).select_related("subject")[:4]:
+                    items.append({
+                        "id": vc.id,
+                        "kind": "info_link",
+                        "category": "Live Virtual Class",
+                        "severity": "CRITICAL",
+                        "icon": "fa-video",
+                        "title": f"LIVE NOW: {vc.title} ({vc.subject.name})",
+                        "message": "Your teacher has started a live online lesson. Join now to record attendance.",
+                        "created_at": vc.started_at or vc.scheduled_start,
+                        "is_unread": True,
+                        "needs_action": True,
+                        "action_label": "Join Live Class",
+                        "link": reverse("elearning_classroom_room", args=[vc.id]),
+                    })
+
                 soon = today + timedelta(days=7)
                 for item in Assignment.objects.filter(
                     subject__course=student.course,

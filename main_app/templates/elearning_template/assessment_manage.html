@@ -1,0 +1,190 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow">{{ assessment.course.name }} &middot; {{ assessment.subject.name }} &middot; {{ assessment.get_assessment_type_display }}</div>
+        <h2>{{ assessment.title }}</h2>
+        <p>{{ questions|length }} Questions &middot; Total Marks: <strong>{{ assessment.total_marks|floatformat:1 }}</strong> &middot; Duration: {{ assessment.duration_minutes }} min</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <form method="post" class="d-inline">
+          {% csrf_token %}<input type="hidden" name="action" value="toggle_publish">
+          <button type="submit" class="btn btn-sm {% if assessment.is_published %}btn-warning{% else %}btn-info{% endif %}">
+            {% if assessment.is_published %}Set to Draft{% else %}Publish to Students{% endif %}
+          </button>
+        </form>
+        <form method="post" class="d-inline">
+          {% csrf_token %}<input type="hidden" name="action" value="toggle_publish_results">
+          <button type="submit" class="btn btn-sm btn-outline-light">
+            {% if assessment.results_published %}Hide Results{% else %}Publish Results{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="row">
+      <!-- Add Question Form -->
+      <div class="col-lg-5 mb-4">
+        <div class="card mb-3">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-plus"></i> Add Question (All 9 Types)</h3></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_question">
+            <div class="card-body">
+              <div class="row">
+                <div class="col-6 mb-2">
+                  <label class="small">Question Type</label>
+                  <select name="question_type" class="form-control form-control-sm">
+                    {% for code, label in question_types %}
+                    <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-3 mb-2">
+                  <label class="small">Marks</label>
+                  <input type="number" step="0.5" min="0.5" name="marks" value="2" class="form-control form-control-sm">
+                </div>
+                <div class="col-3 mb-2">
+                  <label class="small">Difficulty</label>
+                  <select name="difficulty" class="form-control form-control-sm">
+                    {% for code, label in difficulty_choices %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+                  </select>
+                </div>
+              </div>
+              <div class="form-group mb-2">
+                <label class="small">Question Prompt</label>
+                <textarea name="prompt" rows="3" class="form-control form-control-sm" required placeholder="Write the question clearly..."></textarea>
+              </div>
+              <div class="form-group mb-2">
+                <label class="small">Choices (one per line for MCQ/Multi-Select; or Left=Right per line for Matching)</label>
+                <textarea name="choices_text" rows="3" class="form-control form-control-sm" placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"></textarea>
+              </div>
+              <div class="form-group mb-2">
+                <label class="small">Correct Answer Key (exact option for MCQ/True-False; comma-separated for Multi-Select/Fill-Blank)</label>
+                <input type="text" name="correct_answer_text" class="form-control form-control-sm" placeholder="e.g. Option A or True">
+              </div>
+              <div class="form-group mb-0">
+                <label class="small">Marking Guide / Rubric (for manual grading)</label>
+                <textarea name="marking_guide" rows="2" class="form-control form-control-sm"></textarea>
+              </div>
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-primary btn-sm btn-block">Add Question</button></div>
+          </form>
+        </div>
+
+        {% if bank_questions %}
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-database"></i> Import from Question Bank</h3></div>
+          <div class="card-body p-0" style="max-height:240px;overflow-y:auto;">
+            <div class="list-group list-group-flush">
+              {% for bq in bank_questions %}
+              <div class="list-group-item py-2 d-flex justify-content-between align-items-center">
+                <div class="small pr-2"><span class="badge badge-secondary mr-1">{{ bq.question_type }}</span>{{ bq.prompt|truncatechars:70 }}</div>
+                <form method="post">
+                  {% csrf_token %}<input type="hidden" name="action" value="import_bank_question"><input type="hidden" name="bank_question_id" value="{{ bq.id }}">
+                  <button type="submit" class="btn btn-xs btn-info">Import</button>
+                </form>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Questions List + Student Submissions Grading -->
+      <div class="col-lg-7 mb-4">
+        <div class="card mb-4">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-list-ol"></i> Questions ({{ questions|length }})</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for q in questions %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div>
+                    <span class="badge badge-info mr-1">Q{{ forloop.counter }}</span>
+                    <span class="badge badge-secondary mr-1">{{ q.get_question_type_display }}</span>
+                    <span class="badge badge-primary mr-1">{{ q.marks }} pts</span>
+                    {% if q.is_ai_generated %}<span class="badge badge-warning">AI Draft</span>{% endif %}
+                    <div class="font-weight-bold mt-1">{{ q.prompt }}</div>
+                    {% if q.choices %}
+                    <ul class="small text-muted mb-1 mt-1 pl-3">
+                      {% for c in q.choices %}<li>{{ c }}</li>{% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% if q.correct_answer %}<div class="small text-success">Answer Key: {{ q.correct_answer }}</div>{% endif %}
+                  </div>
+                  <form method="post" onsubmit="return confirm('Remove this question?')">
+                    {% csrf_token %}<input type="hidden" name="action" value="delete_question"><input type="hidden" name="question_id" value="{{ q.id }}">
+                    <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+                  </form>
+                </div>
+              </div>
+              {% empty %}
+              <div class="p-4 text-center text-muted small">No questions added yet. Add questions using the form on the left.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Attempts & Manual Subjective Grading -->
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-user-check"></i> Student Attempts &amp; Grading ({{ attempts|length }})</h3></div>
+          <div class="card-body">
+            {% for att in attempts %}
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                <div>
+                  <strong>{{ att.student.admin.get_full_name }}</strong>
+                  <span class="badge badge-secondary ml-1">Attempt #{{ att.attempt_number }}</span>
+                  <span class="badge {% if att.status == 'GRADED' %}badge-success{% else %}badge-warning{% endif %} ml-1">{{ att.get_status_display }}</span>
+                  {% if att.tab_switch_count %}<span class="badge badge-danger ml-1">Tab switches: {{ att.tab_switch_count }}</span>{% endif %}
+                </div>
+                <div class="font-weight-bold text-primary">{{ att.total_score|floatformat:1 }} / {{ assessment.total_marks|floatformat:1 }} ({{ att.percentage }}%)</div>
+              </div>
+
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="grade_attempt">
+                <input type="hidden" name="attempt_id" value="{{ att.id }}">
+                {% for ans in att.answers.all %}
+                  {% if not ans.question.is_objective %}
+                  <div class="p-2 mb-2 rounded" style="background:var(--sgs-bg);border:1px solid var(--sgs-border);">
+                    <div class="small font-weight-bold">{{ ans.question.prompt }} ({{ ans.question.marks }} pts)</div>
+                    <div class="small mt-1 mb-2">{{ ans.text_answer|default:"(No text response)" }}</div>
+                    {% if ans.uploaded_file %}
+                    <a href="{{ ans.uploaded_file.url }}" target="_blank" class="btn btn-xs btn-secondary mb-2">View Uploaded File</a>
+                    {% endif %}
+                    <div class="form-row">
+                      <div class="col-4">
+                        <input type="number" step="0.5" min="0" max="{{ ans.question.marks }}" name="marks_{{ ans.id }}" value="{{ ans.marks_awarded|default_if_none:'' }}" class="form-control form-control-sm" placeholder="Marks / {{ ans.question.marks }}">
+                      </div>
+                      <div class="col-8">
+                        <input type="text" name="comment_{{ ans.id }}" value="{{ ans.teacher_comment }}" class="form-control form-control-sm" placeholder="Feedback on answer...">
+                      </div>
+                    </div>
+                  </div>
+                  {% endif %}
+                {% endfor %}
+                <div class="input-group input-group-sm mt-2">
+                  <input type="text" name="teacher_feedback" value="{{ att.teacher_feedback }}" class="form-control" placeholder="Overall feedback for student...">
+                  <div class="input-group-append">
+                    <button type="submit" class="btn btn-primary">Save Grade</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+            {% empty %}
+            <div class="text-center text-muted small py-3">No student attempts yet.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

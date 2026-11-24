@@ -11,6 +11,7 @@ ROLE_PROFILE_URLS = {
     "4": "dos_view_profile",
     "5": "bursar_view_profile",
     "6": "staff_view_profile",
+    "7": "parent_guardian_portal",
 }
 
 

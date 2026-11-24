@@ -934,3 +934,305 @@ class SixUserRolesTests(TestCase):
         sub.refresh_from_db()
         self.assertEqual(sub.status, "TURNED_IN")
         self.assertFalse(sub.ai_flagged)
+
+
+class ELearningVirtualClassroomEndToEndTests(TestCase):
+    """End-to-end verification of the SGS eLearning & Virtual Classroom module (Section 23)."""
+
+    def setUp(self):
+        self.course = Course.objects.create(name="Senior 2 (S2)")
+        self.session = Session.objects.create(
+            start_year=date(2026, 1, 10),
+            end_year=date(2026, 4, 20),
+        )
+        self.admin_user = CustomUser.objects.create_superuser(
+            email="elearn_admin@school.test",
+            password="pass",
+            first_name="Head",
+            last_name="Principal",
+            gender="M",
+            address="Juba",
+            user_type="1",
+        )
+        self.teacher_user = CustomUser.objects.create_user(
+            email="elearn_teacher@school.test",
+            password="pass",
+            first_name="Grace",
+            last_name="Teacher",
+            gender="F",
+            address="Juba",
+            user_type="2",
+        )
+        self.teacher = Staff.objects.get(admin=self.teacher_user)
+        self.teacher.course = self.course
+        self.teacher.save()
+
+        self.subject = Subject.objects.create(
+            name="Mathematics",
+            staff=self.teacher,
+            course=self.course,
+        )
+
+        self.student_user = CustomUser.objects.create_user(
+            email="elearn_student@school.test",
+            password="pass",
+            first_name="Daniel",
+            last_name="Learner",
+            gender="M",
+            address="Juba",
+            user_type="3",
+        )
+        self.student = Student.objects.get(admin=self.student_user)
+        self.student.course = self.course
+        self.student.session = self.session
+        self.student.save()
+
+        self.parent_user = CustomUser.objects.create_user(
+            email="elearn_parent@school.test",
+            password="pass",
+            first_name="Mary",
+            last_name="Guardian",
+            gender="F",
+            address="Juba",
+            user_type="7",
+        )
+        from .models import ParentGuardian
+        self.guardian, _ = ParentGuardian.objects.get_or_create(admin=self.parent_user)
+        self.guardian.students.add(self.student)
+
+    def test_full_end_to_end_elearning_virtual_classroom_workflow(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from .models import (
+            AILearningInteraction,
+            AssessmentAttempt,
+            DiscussionThread,
+            LearningMaterial,
+            LearningTopic,
+            LectureRecording,
+            MaterialAccessLog,
+            NotificationStudent,
+            OnlineAssessment,
+            QuestionBankItem,
+            VirtualAttendanceRecord,
+            VirtualClassroom,
+        )
+
+        # 1. Teacher opens eLearning studio & subject portal, creates Topic & uploads Lesson Notes
+        self.client.force_login(self.teacher_user)
+        self.assertEqual(self.client.get(reverse("elearning_dashboard")).status_code, 200)
+        portal_url = reverse("elearning_subject_portal", args=[self.subject.id])
+        self.assertEqual(self.client.get(portal_url).status_code, 200)
+
+        self.client.post(portal_url, {
+            "action": "create_topic",
+            "title": "Topic 1: Quadratic Equations",
+            "order": "1",
+            "description": "Factorization and quadratic formula",
+            "learning_objectives": "Solve quadratic equations accurately.",
+            "is_published": "on",
+        })
+        topic = LearningTopic.objects.get(subject=self.subject, title="Topic 1: Quadratic Equations")
+
+        pdf_file = SimpleUploadedFile("quadratics.pdf", b"%PDF-1.4 sample notes", content_type="application/pdf")
+        self.client.post(portal_url, {
+            "action": "upload_material",
+            "topic": topic.id,
+            "title": "Quadratics Study Guide",
+            "material_type": "PDF",
+            "description": "Core worked examples",
+            "file": pdf_file,
+            "rich_content": "A quadratic equation has the standard form ax^2 + bx + c = 0.",
+            "allow_download": "on",
+            "is_published": "on",
+        })
+        material = LearningMaterial.objects.get(subject=self.subject, title="Quadratics Study Guide")
+        self.assertTrue(NotificationStudent.objects.filter(student=self.student, message__icontains="Quadratics Study Guide").exists())
+
+        # 2. Teacher launches an instant live Virtual Classroom -> Students notified
+        self.client.post(reverse("elearning_classrooms"), {
+            "action": "instant",
+            "subject_id": self.subject.id,
+            "title": "Live Quadratics Workshop",
+            "duration_minutes": "45",
+        })
+        classroom = VirtualClassroom.objects.get(title="Live Quadratics Workshop")
+        self.assertEqual(classroom.status, "LIVE")
+        self.assertTrue(NotificationStudent.objects.filter(student=self.student, message__icontains="LIVE NOW").exists())
+
+        # 3. Teacher saves Whiteboard content & uploads Lecture Recording
+        wb_resp = self.client.post(
+            reverse("elearning_classroom_whiteboard", args=[classroom.id]),
+            {"whiteboard_data": "data:image/png;base64,iVBORw0KGgo="},
+        )
+        self.assertEqual(wb_resp.status_code, 200)
+        classroom.refresh_from_db()
+        self.assertTrue(classroom.whiteboard_data.startswith("data:image/png"))
+
+        rec_file = SimpleUploadedFile("lesson.webm", b"\x1a\x45\xdf\xa3mockwebm", content_type="video/webm")
+        up_resp = self.client.post(
+            reverse("elearning_upload_recording", args=[classroom.id]),
+            {"video_file": rec_file, "duration_seconds": "1800", "title": "Quadratics Recording"},
+        ).json()
+        self.assertTrue(up_resp["ok"])
+        recording = LectureRecording.objects.get(id=up_resp["recording_id"])
+        self.assertFalse(recording.is_published)
+
+        # Teacher publishes recording
+        self.client.post(reverse("elearning_recordings"), {
+            "action": "toggle_publish",
+            "recording_id": recording.id,
+        })
+        recording.refresh_from_db()
+        self.assertTrue(recording.is_published)
+
+        # 4. Student logs in, accesses Subject Portal, marks material complete, joins Live Classroom & sends heartbeat
+        self.client.force_login(self.student_user)
+        self.assertEqual(self.client.get(reverse("elearning_dashboard")).status_code, 200)
+        self.assertEqual(self.client.get(portal_url).status_code, 200)
+        self.client.post(portal_url, {"action": "toggle_material_complete", "material_id": material.id})
+        self.assertTrue(MaterialAccessLog.objects.filter(student=self.student, material=material, is_completed=True).exists())
+
+        room_resp = self.client.get(reverse("elearning_classroom_room", args=[classroom.id]))
+        self.assertEqual(room_resp.status_code, 200)
+        self.assertContains(room_resp, classroom.room_code)
+
+        # Simulate active participation heartbeat
+        hb = self.client.post(reverse("elearning_classroom_heartbeat", args=[classroom.id])).json()
+        self.assertEqual(hb["classroom_status"], "LIVE")
+        vrec = VirtualAttendanceRecord.objects.get(classroom=classroom, student=self.student)
+        vrec.active_seconds = 2400  # 40 of 45 min -> >60% threshold -> PRESENT
+        vrec.save()
+
+        # Student posts in classroom chat & discussion forum
+        self.client.post(reverse("elearning_classroom_chat", args=[classroom.id]), {"message": "Could you repeat step 2?", "is_question": "1"})
+        self.client.post(reverse("elearning_discussions"), {"subject_id": self.subject.id, "topic": topic.id, "title": "Factoring question", "body": "How do we factor x^2 - 9?"})
+        self.assertTrue(DiscussionThread.objects.filter(subject=self.subject, title="Factoring question").exists())
+
+        # Student accesses published recording
+        rec_resp = self.client.get(reverse("elearning_recordings"))
+        self.assertEqual(rec_resp.status_code, 200)
+        self.assertContains(rec_resp, "Quadratics Recording")
+
+        # 5. Teacher ends lesson -> Automatically synchronizes attendance into existing SGS Attendance & AttendanceReport
+        self.client.force_login(self.teacher_user)
+        self.client.post(reverse("elearning_classroom_control", args=[classroom.id]), {"action": "end"})
+        classroom.refresh_from_db()
+        self.assertEqual(classroom.status, "ENDED")
+        self.assertTrue(classroom.attendance_synced)
+        self.assertTrue(AttendanceReport.objects.filter(student=self.student, attendance=classroom.synced_attendance, status=True).exists())
+
+        # 6. Teacher creates Online Quiz (Objective MCQ + Subjective Short Answer), publishes it
+        self.client.post(reverse("elearning_assessments"), {
+            "title": "Quadratics Quiz 1",
+            "subject": self.subject.id,
+            "topic": topic.id,
+            "session": self.session.id,
+            "assessment_type": "QUIZ",
+            "instructions": "Answer all questions.",
+            "duration_minutes": "20",
+            "pass_marks": "5",
+            "max_attempts": "1",
+            "is_published": "on",
+            "allow_review": "on",
+        })
+        quiz = OnlineAssessment.objects.get(title="Quadratics Quiz 1")
+        manage_url = reverse("elearning_assessment_manage", args=[quiz.id])
+        self.client.post(manage_url, {
+            "action": "add_question",
+            "question_type": "MCQ",
+            "marks": "4",
+            "difficulty": "EASY",
+            "prompt": "What are the roots of x^2 - 9 = 0?",
+            "choices_text": "3 and -3\n9 and -9\n0 and 3",
+            "correct_answer_text": "3 and -3",
+        })
+        self.client.post(manage_url, {
+            "action": "add_question",
+            "question_type": "SHORT_ANSWER",
+            "marks": "6",
+            "difficulty": "MEDIUM",
+            "prompt": "Explain the discriminant b^2 - 4ac.",
+            "marking_guide": "Mention positive, zero, and negative cases.",
+        })
+        quiz.refresh_from_db()
+        self.assertEqual(quiz.total_marks, 10.0)
+        q_mcq = QuestionBankItem.objects.get(assessment=quiz, question_type="MCQ")
+        q_sa = QuestionBankItem.objects.get(assessment=quiz, question_type="SHORT_ANSWER")
+
+        # 7. Student takes quiz, autosaves, and submits -> Objective auto-graded!
+        self.client.force_login(self.student_user)
+        take_url = reverse("elearning_take_assessment", args=[quiz.id])
+        self.assertEqual(self.client.get(take_url).status_code, 200)
+        as_resp = self.client.post(
+            reverse("elearning_assessment_autosave", args=[quiz.id]),
+            {f"q_{q_mcq.id}": "3 and -3", f"q_{q_sa.id}": "It tells how many real roots exist."},
+        ).json()
+        self.assertTrue(as_resp["ok"])
+
+        self.client.post(take_url, {
+            f"q_{q_mcq.id}": "3 and -3",
+            f"q_{q_sa.id}": "Positive means 2 real roots, zero means 1, negative means none.",
+        })
+        attempt = AssessmentAttempt.objects.get(assessment=quiz, student=self.student)
+        self.assertEqual(attempt.objective_score, 4.0)
+        self.assertEqual(attempt.status, "SUBMITTED")  # Awaiting teacher manual grade for subjective Q
+
+        # 8. Teacher grades subjective question & publishes results
+        self.client.force_login(self.teacher_user)
+        sa_ans = attempt.answers.get(question=q_sa)
+        self.client.post(manage_url, {
+            "action": "grade_attempt",
+            "attempt_id": attempt.id,
+            f"marks_{sa_ans.id}": "5",
+            f"comment_{sa_ans.id}": "Clear explanation!",
+            "teacher_feedback": "Excellent effort.",
+        })
+        self.client.post(manage_url, {"action": "toggle_publish_results"})
+        attempt.refresh_from_db()
+        self.assertEqual(attempt.status, "GRADED")
+        self.assertEqual(attempt.total_score, 9.0)
+        self.assertEqual(attempt.percentage, 90.0)
+        self.assertTrue(attempt.passed)
+
+        # Student views published result & uses AI Study Assistant
+        self.client.force_login(self.student_user)
+        res_resp = self.client.get(reverse("elearning_attempt_result", args=[attempt.id]))
+        self.assertContains(res_resp, "90.0%")
+        ai_resp = self.client.post(reverse("elearning_ai_assistant"), {
+            "mode": "REVISION_NOTES",
+            "subject_id": self.subject.id,
+            "topic_id": topic.id,
+            "prompt": "Summarize quadratic equations for revision",
+        })
+        self.assertEqual(ai_resp.status_code, 200)
+        self.assertTrue(AILearningInteraction.objects.filter(user=self.student_user, mode="REVISION_NOTES").exists())
+
+        # 9. Teacher uses AI to generate draft quiz -> Requires teacher review & stays unpublished on import
+        self.client.force_login(self.teacher_user)
+        self.client.post(reverse("elearning_ai_assistant"), {
+            "mode": "GENERATE_QUIZ",
+            "subject_id": self.subject.id,
+            "topic_id": topic.id,
+            "prompt": "Draft a short quiz on quadratics",
+        })
+        ai_quiz_inter = AILearningInteraction.objects.filter(user=self.teacher_user, mode="GENERATE_QUIZ").first()
+        self.assertTrue(ai_quiz_inter.requires_teacher_review)
+
+        # 10. Parent/Guardian can monitor linked child's published results & attendance, but CANNOT join live classroom
+        self.client.force_login(self.parent_user)
+        parent_resp = self.client.get(reverse("parent_guardian_portal"))
+        self.assertEqual(parent_resp.status_code, 200)
+        self.assertContains(parent_resp, "Daniel Learner")
+        self.assertContains(parent_resp, "90.0%")
+        blocked_room = self.client.get(reverse("elearning_classroom_room", args=[classroom.id]))
+        self.assertEqual(blocked_room.status_code, 302)  # Blocked from joining live teacher classroom
+
+        # 11. Administrator views eLearning Command Center & exports CSV Analytics
+        self.client.force_login(self.admin_user)
+        admin_el = self.client.get(reverse("elearning_dashboard"))
+        self.assertEqual(admin_el.status_code, 200)
+        csv_resp = self.client.get(reverse("elearning_analytics") + "?export=csv")
+        self.assertEqual(csv_resp.status_code, 200)
+        self.assertIn("text/csv", csv_resp["Content-Type"])
+        self.assertContains(csv_resp, "Mathematics")
+

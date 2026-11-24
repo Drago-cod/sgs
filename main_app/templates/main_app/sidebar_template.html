@@ -132,6 +132,71 @@
                     </a>
                 </li>
 
+                <li class="nav-header">eLEARNING &amp; VIRTUAL CLASSROOM</li>
+                <li class="nav-item">
+                    {% url 'elearning_dashboard' as elearning_dashboard %}
+                    <a href="{{elearning_dashboard}}" class="nav-link {% if elearning_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-laptop-house"></i>
+                        <p>eLearning Command</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_classrooms' as elearning_classrooms %}
+                    <a href="{{elearning_classrooms}}" class="nav-link {% if elearning_classrooms == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-video"></i>
+                        <p>Virtual Classrooms</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_material_library' as elearning_material_library %}
+                    <a href="{{elearning_material_library}}" class="nav-link {% if elearning_material_library == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-folder-open"></i>
+                        <p>Learning Materials</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_assessments' as elearning_assessments %}
+                    <a href="{{elearning_assessments}}" class="nav-link {% if elearning_assessments == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Online Quizzes &amp; Exams</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_recordings' as elearning_recordings %}
+                    <a href="{{elearning_recordings}}" class="nav-link {% if elearning_recordings == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-film"></i>
+                        <p>Lecture Recordings</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_discussions' as elearning_discussions %}
+                    <a href="{{elearning_discussions}}" class="nav-link {% if elearning_discussions == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Discussion Forums</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_ai_assistant' as elearning_ai_assistant %}
+                    <a href="{{elearning_ai_assistant}}" class="nav-link {% if elearning_ai_assistant == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-magic"></i>
+                        <p>AI Learning Assistant</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_analytics' as elearning_analytics %}
+                    <a href="{{elearning_analytics}}" class="nav-link {% if elearning_analytics == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>eLearning Analytics</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_manage_guardians' as elearning_manage_guardians %}
+                    <a href="{{elearning_manage_guardians}}" class="nav-link {% if elearning_manage_guardians == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-friends"></i>
+                        <p>Parent / Guardian Links</p>
+                    </a>
+                </li>
+
                 <li class="nav-header">ATTENDANCE &amp; FEEDBACK</li>
                 <li class="nav-item">
                     {% url 'admin_ai_attendance_dashboard' as admin_ai_attendance_dashboard %}
@@ -258,6 +323,50 @@
                     <a href="{{dos_academic_results}}" class="nav-link {% if dos_academic_results == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-poll"></i>
                         <p>Academic Results</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">eLEARNING &amp; VIRTUAL CLASSROOM</li>
+                <li class="nav-item">
+                    {% url 'elearning_dashboard' as elearning_dashboard %}
+                    <a href="{{elearning_dashboard}}" class="nav-link {% if elearning_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-laptop-house"></i>
+                        <p>eLearning Overview</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_classrooms' as elearning_classrooms %}
+                    <a href="{{elearning_classrooms}}" class="nav-link {% if elearning_classrooms == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-video"></i>
+                        <p>Virtual Classrooms</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_assessments' as elearning_assessments %}
+                    <a href="{{elearning_assessments}}" class="nav-link {% if elearning_assessments == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Online Quizzes &amp; Exams</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_recordings' as elearning_recordings %}
+                    <a href="{{elearning_recordings}}" class="nav-link {% if elearning_recordings == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-film"></i>
+                        <p>Lecture Recordings</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_analytics' as elearning_analytics %}
+                    <a href="{{elearning_analytics}}" class="nav-link {% if elearning_analytics == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>eLearning Analytics</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_manage_guardians' as elearning_manage_guardians %}
+                    <a href="{{elearning_manage_guardians}}" class="nav-link {% if elearning_manage_guardians == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-friends"></i>
+                        <p>Parent / Guardian Links</p>
                     </a>
                 </li>
 
@@ -530,6 +639,71 @@
                     </a>
                 </li>
 
+                <li class="nav-header">eLEARNING &amp; VIRTUAL CLASSROOM</li>
+                <li class="nav-item">
+                    {% url 'elearning_dashboard' as elearning_dashboard %}
+                    <a href="{{elearning_dashboard}}" class="nav-link {% if elearning_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-laptop-house"></i>
+                        <p>eLearning Studio</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_classrooms' as elearning_classrooms %}
+                    <a href="{{elearning_classrooms}}" class="nav-link {% if elearning_classrooms == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-video"></i>
+                        <p>Virtual Classrooms</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_material_library' as elearning_material_library %}
+                    <a href="{{elearning_material_library}}" class="nav-link {% if elearning_material_library == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-folder-open"></i>
+                        <p>Learning Materials</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_assessments' as elearning_assessments %}
+                    <a href="{{elearning_assessments}}" class="nav-link {% if elearning_assessments == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Online Quizzes &amp; Exams</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_question_bank' as elearning_question_bank %}
+                    <a href="{{elearning_question_bank}}" class="nav-link {% if elearning_question_bank == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-database"></i>
+                        <p>Question Bank</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_recordings' as elearning_recordings %}
+                    <a href="{{elearning_recordings}}" class="nav-link {% if elearning_recordings == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-film"></i>
+                        <p>Lecture Recordings</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_discussions' as elearning_discussions %}
+                    <a href="{{elearning_discussions}}" class="nav-link {% if elearning_discussions == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Discussion Forums</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_ai_assistant' as elearning_ai_assistant %}
+                    <a href="{{elearning_ai_assistant}}" class="nav-link {% if elearning_ai_assistant == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-magic"></i>
+                        <p>AI Teaching Assistant</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_analytics' as elearning_analytics %}
+                    <a href="{{elearning_analytics}}" class="nav-link {% if elearning_analytics == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>Class Analytics</p>
+                    </a>
+                </li>
+
                 <li class="nav-header">ATTENDANCE</li>
                 <li class="nav-item">
                     {% url 'staff_attendance_checkin' as staff_attendance_checkin %}
@@ -587,6 +761,52 @@
                     <a href="{{staff_performance_feedback}}" class="nav-link {% if staff_performance_feedback == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-award"></i>
                         <p>My Performance Reviews</p>
+                    </a>
+                </li>
+
+{% elif request.user.user_type == '7' %}
+    <!-- Parent / Guardian ('7') -->
+    <a href="{% url 'parent_guardian_portal' %}" class="brand-link">
+        <img src="{% static 'img/logo.jpeg' %}" alt="School Logo" class="brand-image">
+        <div class="sgs-brand-meta">
+            <span class="sgs-brand-title">JASS Portal</span>
+            <span class="sgs-brand-sub">Parent / Guardian</span>
+        </div>
+    </a>
+
+    <div class="sidebar">
+        <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+            <div class="image">
+                <img src="{% static 'dist/img/avatar5.png' %}" class="img-circle elevation-2" alt="User Image">
+            </div>
+            <div class="info">
+                <a href="{% url 'parent_guardian_portal' %}" class="d-block">{{ user }}</a>
+                <small class="text-info">Parent / Guardian</small>
+            </div>
+        </div>
+
+        <nav class="mt-2">
+            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                <li class="nav-header">STUDENT MONITORING</li>
+                <li class="nav-item">
+                    {% url 'parent_guardian_portal' as parent_guardian_portal %}
+                    <a href="{{parent_guardian_portal}}" class="nav-link {% if parent_guardian_portal == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-user-friends"></i>
+                        <p>My Children Monitor</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_material_library' as elearning_material_library %}
+                    <a href="{{elearning_material_library}}" class="nav-link {% if elearning_material_library == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-folder-open"></i>
+                        <p>Course Materials</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_analytics' as elearning_analytics %}
+                    <a href="{{elearning_analytics}}" class="nav-link {% if elearning_analytics == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>Academic Progress</p>
                     </a>
                 </li>
 
@@ -660,6 +880,64 @@
                     <a href="{{student_assignments}}" class="nav-link {% if student_assignments == request.path %} active {% endif %}">
                         <i class="nav-icon fas fa-tasks"></i>
                         <p>Assignments</p>
+                    </a>
+                </li>
+
+                <li class="nav-header">eLEARNING &amp; VIRTUAL CLASSROOM</li>
+                <li class="nav-item">
+                    {% url 'elearning_dashboard' as elearning_dashboard %}
+                    <a href="{{elearning_dashboard}}" class="nav-link {% if elearning_dashboard == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-laptop-house"></i>
+                        <p>eLearning Hub</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_classrooms' as elearning_classrooms %}
+                    <a href="{{elearning_classrooms}}" class="nav-link {% if elearning_classrooms == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-video"></i>
+                        <p>Virtual Classrooms</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_material_library' as elearning_material_library %}
+                    <a href="{{elearning_material_library}}" class="nav-link {% if elearning_material_library == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-folder-open"></i>
+                        <p>Learning Materials</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_assessments' as elearning_assessments %}
+                    <a href="{{elearning_assessments}}" class="nav-link {% if elearning_assessments == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-clipboard-check"></i>
+                        <p>Online Quizzes &amp; Exams</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_recordings' as elearning_recordings %}
+                    <a href="{{elearning_recordings}}" class="nav-link {% if elearning_recordings == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-film"></i>
+                        <p>Recorded Lectures</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_discussions' as elearning_discussions %}
+                    <a href="{{elearning_discussions}}" class="nav-link {% if elearning_discussions == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-comments"></i>
+                        <p>Discussion Forums</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_ai_assistant' as elearning_ai_assistant %}
+                    <a href="{{elearning_ai_assistant}}" class="nav-link {% if elearning_ai_assistant == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-magic"></i>
+                        <p>AI Study Assistant</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    {% url 'elearning_analytics' as elearning_analytics %}
+                    <a href="{{elearning_analytics}}" class="nav-link {% if elearning_analytics == request.path %} active {% endif %}">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>My Learning Progress</p>
                     </a>
                 </li>
 

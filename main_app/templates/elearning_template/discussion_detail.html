@@ -1,0 +1,75 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ thread.title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="card mb-4">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center" style="gap:8px;">
+        <div>
+          <span class="badge badge-info mr-1">{{ thread.subject.name }}</span>
+          {% if thread.is_pinned %}<span class="badge badge-warning mr-1">Pinned</span>{% endif %}
+          {% if thread.is_closed %}<span class="badge badge-secondary mr-1">Closed</span>{% endif %}
+          <strong class="ml-1">{{ thread.title }}</strong>
+        </div>
+        {% if can_moderate %}
+        <div class="d-flex" style="gap:6px;">
+          <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_pin"><button class="btn btn-xs btn-secondary">{% if thread.is_pinned %}Unpin{% else %}Pin{% endif %}</button></form>
+          <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="toggle_close"><button class="btn btn-xs btn-secondary">{% if thread.is_closed %}Reopen{% else %}Close{% endif %}</button></form>
+          <form method="post" class="d-inline" onsubmit="return confirm('Remove this thread?')">{% csrf_token %}<input type="hidden" name="action" value="hide_thread"><button class="btn btn-xs btn-danger">Remove</button></form>
+        </div>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="mb-2">{{ thread.body|linebreaksbr }}</p>
+        <small class="text-muted">Posted by <strong>{{ thread.author.get_full_name|default:thread.author.email }}</strong> ({{ thread.author.get_user_type_display }}) &middot; {{ thread.created_at|date:"M d, Y H:i" }}</small>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-reply-all"></i> Replies ({{ replies|length }})</h3></div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          {% for rep in replies %}
+          <div class="list-group-item">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <div>
+                <strong>{{ rep.author.get_full_name|default:rep.author.email }}</strong>
+                <span class="badge badge-secondary ml-1">{{ rep.author.get_user_type_display }}</span>
+                {% if rep.is_teacher_endorsed %}<span class="badge badge-success ml-1"><i class="fas fa-check-circle mr-1"></i>Teacher Endorsed</span>{% endif %}
+              </div>
+              <small class="text-muted">{{ rep.created_at|date:"M d, H:i" }}</small>
+            </div>
+            <p class="mb-2 small">{{ rep.body|linebreaksbr }}</p>
+            {% if can_moderate %}
+            <div class="d-flex" style="gap:6px;">
+              <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="endorse_reply"><input type="hidden" name="reply_id" value="{{ rep.id }}"><button class="btn btn-xs btn-secondary">{% if rep.is_teacher_endorsed %}Remove Endorsement{% else %}Endorse Answer{% endif %}</button></form>
+              <form method="post" class="d-inline">{% csrf_token %}<input type="hidden" name="action" value="hide_reply"><input type="hidden" name="reply_id" value="{{ rep.id }}"><button class="btn btn-xs btn-danger">Hide</button></form>
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="p-4 text-center text-muted small">No replies yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if can_reply %}
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="reply">
+        <div class="card-footer">
+          <div class="form-group mb-2">
+            <textarea name="body" rows="3" class="form-control" required placeholder="Write a helpful response..."></textarea>
+          </div>
+          <div class="d-flex justify-content-between">
+            <a href="{% url 'elearning_discussions' %}" class="btn btn-secondary btn-sm">Back to Forums</a>
+            <button type="submit" class="btn btn-primary btn-sm">Post Reply</button>
+          </div>
+        </div>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock content %}

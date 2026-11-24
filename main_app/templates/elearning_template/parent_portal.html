@@ -1,0 +1,109 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="sgs-hero-banner">
+      <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Read-Only Guardian Learning Monitor</div>
+      <h2>Parent &amp; Guardian Portal</h2>
+      <p>Track your registered child's online lessons, attendance, assignments, published results, and academic progress.</p>
+    </div>
+
+    {% for child in children_data %}
+    <div class="card mb-4">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+        <div>
+          <h3 class="card-title mb-0"><i class="fas fa-user-graduate"></i> {{ child.student.admin.get_full_name }}</h3>
+          <small class="text-muted">{{ child.student.course.name|default:"Unassigned" }} &middot; {{ child.student.session|default:"Active Term" }}</small>
+        </div>
+        <div class="d-flex" style="gap:8px;">
+          <span class="badge badge-info">Progress: {{ child.progress.overall_percent }}%</span>
+          <span class="badge badge-success">Attendance: {{ child.attendance_rate }}%</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          <div class="col-lg-6 mb-3">
+            <h6 class="font-weight-bold text-uppercase small text-muted mb-2">Upcoming Online Classes (Schedule Only)</h6>
+            <ul class="list-group list-group-flush border rounded">
+              {% for vc in child.upcoming_classes %}
+              <li class="list-group-item py-2 d-flex justify-content-between">
+                <span><strong>{{ vc.title }}</strong> ({{ vc.subject.name }})</span>
+                <small class="text-muted">{{ vc.scheduled_start|date:"M d, H:i" }}</small>
+              </li>
+              {% empty %}
+              <li class="list-group-item text-muted small">No upcoming virtual classes scheduled.</li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="col-lg-6 mb-3">
+            <h6 class="font-weight-bold text-uppercase small text-muted mb-2">Assignment Completion &amp; Deadlines</h6>
+            <ul class="list-group list-group-flush border rounded">
+              {% for ar in child.assignment_rows %}
+              <li class="list-group-item py-2 d-flex justify-content-between align-items-center">
+                <div>
+                  <strong class="small">{{ ar.assignment.title }}</strong>
+                  <small class="d-block text-muted">{{ ar.assignment.subject.name }} &middot; Due {{ ar.assignment.due_date|date:"M d" }}</small>
+                </div>
+                {% if ar.submission %}
+                <span class="badge badge-info">{{ ar.submission.get_status_display }}</span>
+                {% else %}
+                <span class="badge badge-warning">Pending</span>
+                {% endif %}
+              </li>
+              {% empty %}
+              <li class="list-group-item text-muted small">No assignments posted.</li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="col-lg-6 mb-3">
+            <h6 class="font-weight-bold text-uppercase small text-muted mb-2">Published Quiz &amp; Examination Results</h6>
+            <ul class="list-group list-group-flush border rounded">
+              {% for qr in child.quiz_results %}
+              <li class="list-group-item py-2 d-flex justify-content-between">
+                <span>{{ qr.assessment.title }} ({{ qr.assessment.subject.name }})</span>
+                <span class="badge {% if qr.passed %}badge-success{% else %}badge-danger{% endif %}">{{ qr.percentage }}%</span>
+              </li>
+              {% endfor %}
+              {% for er in child.exam_results %}
+              <li class="list-group-item py-2 d-flex justify-content-between">
+                <span>{{ er.subject.name }} (School Result)</span>
+                <span class="badge badge-primary">Test {{ er.test }} / Exam {{ er.exam }}</span>
+              </li>
+              {% empty %}
+                {% if not child.quiz_results %}
+                <li class="list-group-item text-muted small">No published results yet.</li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="col-lg-6 mb-3">
+            <h6 class="font-weight-bold text-uppercase small text-muted mb-2">Academic Announcements</h6>
+            <ul class="list-group list-group-flush border rounded">
+              {% for ann in child.announcements %}
+              <li class="list-group-item py-2">
+                <strong class="small">{{ ann.title }}</strong> <span class="badge badge-secondary">{{ ann.subject.name }}</span>
+                <div class="small text-muted">{{ ann.body|truncatechars:100 }}</div>
+              </li>
+              {% empty %}
+              <li class="list-group-item text-muted small">No recent announcements.</li>
+              {% endfor %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <div class="card p-5 text-center text-muted">
+      <i class="fas fa-user-friends fa-2x mb-2"></i>
+      <h5>No Linked Students Yet</h5>
+      <p class="small mb-0">Ask the School Administrator or Director of Studies to link your guardian account to your child's student profile.</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock content %}

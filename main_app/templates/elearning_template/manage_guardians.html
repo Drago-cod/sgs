@@ -1,0 +1,75 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-lg-4 mb-4">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-user-plus"></i> Create Parent / Guardian Account</h3></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_guardian">
+            <div class="card-body">
+              <div class="form-group mb-2"><label class="small">First Name</label><input type="text" name="first_name" class="form-control form-control-sm" required></div>
+              <div class="form-group mb-2"><label class="small">Last Name</label><input type="text" name="last_name" class="form-control form-control-sm" required></div>
+              <div class="form-group mb-2"><label class="small">Email</label><input type="email" name="email" class="form-control form-control-sm" required></div>
+              <div class="form-group mb-2"><label class="small">Password</label><input type="password" name="password" class="form-control form-control-sm" value="123try" required></div>
+              <div class="form-group mb-2"><label class="small">Phone Number</label><input type="text" name="phone_number" class="form-control form-control-sm"></div>
+              <div class="form-group mb-0">
+                <label class="small">Link Students (Ctrl/Cmd+Click for multiple)</label>
+                <select name="student_ids" multiple class="form-control form-control-sm" style="height:120px;">
+                  {% for st in students %}
+                  <option value="{{ st.id }}">{{ st.admin.get_full_name }} ({{ st.course.name|default:"—" }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-primary btn-sm btn-block">Create &amp; Link Guardian</button></div>
+          </form>
+        </div>
+      </div>
+
+      <div class="col-lg-8 mb-4">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-user-friends"></i> Registered Guardians &amp; Linked Children</h3></div>
+          <div class="card-body table-responsive p-0">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Guardian</th><th>Email / Phone</th><th>Linked Students</th><th>Update Links</th></tr></thead>
+              <tbody>
+                {% for g in guardians %}
+                <tr>
+                  <td class="font-weight-bold">{{ g.admin.get_full_name }}</td>
+                  <td class="small">{{ g.admin.email }}<br><span class="text-muted">{{ g.phone_number }}</span></td>
+                  <td>
+                    {% for st in g.students.all %}
+                    <span class="badge badge-info mb-1">{{ st.admin.get_full_name }} ({{ st.course.name|default:"—" }})</span>
+                    {% empty %}<span class="text-muted small">None</span>{% endfor %}
+                  </td>
+                  <td>
+                    <form method="post" class="d-flex align-items-center" style="gap:6px;">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="update_links">
+                      <input type="hidden" name="guardian_id" value="{{ g.id }}">
+                      <select name="student_ids" multiple class="form-control form-control-sm" style="min-width:160px;height:68px;">
+                        {% for st in students %}
+                        <option value="{{ st.id }}" {% if st in g.students.all %}selected{% endif %}>{{ st.admin.get_full_name }}</option>
+                        {% endfor %}
+                      </select>
+                      <button type="submit" class="btn btn-xs btn-primary">Save</button>
+                    </form>
+                  </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-center py-4 text-muted">No Parent/Guardian accounts created yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

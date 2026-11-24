@@ -1,0 +1,320 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+      <div>
+        <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size:0.45rem;"></i> Subject Learning Portal &middot; {{ subject.course.name }}</div>
+        <h2>{{ subject.name }}</h2>
+        <p>Instructor: <strong>{{ subject.staff.admin.get_full_name }}</strong> &middot; Topics, study materials, live lessons, assignments, quizzes, and discussions.</p>
+      </div>
+      <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap:8px;">
+        <a href="{% url 'elearning_classrooms' %}" class="btn btn-info btn-sm"><i class="fas fa-video mr-1"></i> Virtual Classes</a>
+        <a href="{% url 'elearning_discussions' %}?subject={{ subject.id }}" class="btn btn-outline-light btn-sm"><i class="fas fa-comments mr-1"></i> Discussion Forum</a>
+        <a href="{% url 'elearning_ai_assistant' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-robot mr-1"></i> AI Assistant</a>
+      </div>
+    </div>
+
+    {% if student_progress %}
+    <div class="card mb-4">
+      <div class="card-body py-3 d-flex flex-wrap align-items-center justify-content-between" style="gap:16px;">
+        <div>
+          <span class="text-muted small font-weight-bold text-uppercase">Your Subject Mastery Progress</span>
+          <div class="h4 font-weight-bold mb-0">{{ student_progress.progress_percent }}% Complete</div>
+        </div>
+        <div class="flex-grow-1" style="max-width:420px;">
+          <div class="progress" style="height:10px;">
+            <div class="progress-bar bg-info" style="width:{{ student_progress.progress_percent }}%;"></div>
+          </div>
+          <div class="d-flex justify-content-between small text-muted mt-1">
+            <span>Notes: {{ student_progress.materials_done }}/{{ student_progress.materials_total }}</span>
+            <span>Tasks: {{ student_progress.assignments_done }}/{{ student_progress.assignments_total }}</span>
+            <span>Quizzes: {{ student_progress.quizzes_done }}/{{ student_progress.quizzes_total }}</span>
+            <span>Attendance: {{ student_progress.attendance_percent }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="row">
+      <!-- Main Column: Topics & Materials -->
+      <div class="col-lg-8 mb-4">
+        <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-layer-group"></i> Curriculum Topics &amp; Learning Modules</h3>
+            <span class="badge badge-primary">{{ topics|length }} Topics</span>
+          </div>
+          <div class="card-body">
+            {% for topic in topics %}
+            <div class="border rounded p-3 mb-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-start mb-2">
+                <div>
+                  <span class="badge badge-info mr-1">Topic {{ topic.order }}</span>
+                  {% if not topic.is_published %}<span class="badge badge-secondary mr-1">Draft</span>{% endif %}
+                  <h5 class="font-weight-bold d-inline">{{ topic.title }}</h5>
+                  {% if topic.description %}<p class="small text-muted mt-1 mb-1">{{ topic.description }}</p>{% endif %}
+                  {% if topic.learning_objectives %}
+                  <div class="small mt-1"><strong class="text-primary">Objectives:</strong> {{ topic.learning_objectives }}</div>
+                  {% endif %}
+                </div>
+                {% if can_manage %}
+                <form method="post" onsubmit="return confirm('Delete this topic? Materials will remain in the subject.')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_topic">
+                  <input type="hidden" name="topic_id" value="{{ topic.id }}">
+                  <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-trash"></i></button>
+                </form>
+                {% endif %}
+              </div>
+
+              <!-- Materials in this Topic -->
+              <div class="mt-2 pt-2 border-top">
+                {% for mat in topic.materials.all %}
+                  {% if mat.is_published or can_manage %}
+                  <div class="d-flex flex-wrap justify-content-between align-items-center py-2" style="border-bottom:1px solid var(--sgs-border);">
+                    <div class="pr-2">
+                      <span class="badge badge-secondary mr-1">{{ mat.material_type }}</span>
+                      <strong>{{ mat.title }}</strong>
+                      {% if mat.id in completed_material_ids %}
+                      <span class="badge badge-success ml-1"><i class="fas fa-check mr-1"></i>Completed</span>
+                      {% endif %}
+                      {% if mat.description %}<div class="small text-muted">{{ mat.description|truncatechars:120 }}</div>{% endif %}
+                      {% if mat.rich_content %}<div class="small text-secondary mt-1">{{ mat.rich_content|truncatechars:180 }}</div>{% endif %}
+                    </div>
+                    <div class="d-flex align-items-center" style="gap:6px;">
+                      {% if mat.file or mat.external_url %}
+                      <a href="{% url 'elearning_open_material' mat.id %}" target="_blank" class="btn btn-xs btn-primary">
+                        <i class="fas fa-external-link-alt mr-1"></i>Open
+                      </a>
+                      {% if mat.file and mat.allow_download %}
+                      <a href="{% url 'elearning_open_material' mat.id %}?download=1" download class="btn btn-xs btn-secondary">
+                        <i class="fas fa-download"></i>
+                      </a>
+                      {% endif %}
+                      {% endif %}
+                      {% if request.user.user_type == '3' %}
+                      <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="toggle_material_complete">
+                        <input type="hidden" name="material_id" value="{{ mat.id }}">
+                        <button type="submit" class="btn btn-xs {% if mat.id in completed_material_ids %}btn-success{% else %}btn-outline-success{% endif %}">
+                          <i class="fas fa-check"></i>
+                        </button>
+                      </form>
+                      {% endif %}
+                      {% if can_manage %}
+                      <form method="post" class="d-inline" onsubmit="return confirm('Delete this material?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_material">
+                        <input type="hidden" name="material_id" value="{{ mat.id }}">
+                        <button type="submit" class="btn btn-xs btn-danger"><i class="fas fa-times"></i></button>
+                      </form>
+                      {% endif %}
+                    </div>
+                  </div>
+                  {% endif %}
+                {% empty %}
+                <div class="small text-muted py-1">No learning materials attached to this topic yet.</div>
+                {% endfor %}
+              </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-4 text-muted">No topics created for {{ subject.name }} yet.</div>
+            {% endfor %}
+
+            {% if unassigned_materials %}
+            <div class="mt-3">
+              <h6 class="font-weight-bold text-muted text-uppercase small mb-2">General Subject Resources</h6>
+              {% for mat in unassigned_materials %}
+              <div class="d-flex justify-content-between align-items-center py-2 border-top">
+                <div>
+                  <span class="badge badge-secondary mr-1">{{ mat.material_type }}</span>
+                  <strong>{{ mat.title }}</strong>
+                </div>
+                <a href="{% url 'elearning_open_material' mat.id %}" target="_blank" class="btn btn-xs btn-primary">Open</a>
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Assignments & Online Assessments -->
+        <div class="row">
+          <div class="col-md-6 mb-4">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="fas fa-tasks"></i> Assignments</h3>
+                {% if can_manage %}
+                <a href="{% url 'staff_assignments' %}" class="btn btn-xs btn-secondary">Manage</a>
+                {% elif request.user.user_type == '3' %}
+                <a href="{% url 'student_assignments' %}" class="btn btn-xs btn-secondary">All Tasks</a>
+                {% endif %}
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  {% for a in assignments %}
+                  <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong class="small">{{ a.title }}</strong>
+                      <small class="d-block text-muted">Due {{ a.due_date|date:"M d, Y" }} &middot; {{ a.max_score|floatformat:0 }} pts</small>
+                    </div>
+                    {% if request.user.user_type == '3' %}
+                    <a href="{% url 'student_assignment_workspace' a.id %}" class="btn btn-xs btn-primary">Work</a>
+                    {% else %}
+                    <a href="{% url 'staff_assignment_submissions' a.id %}" class="btn btn-xs btn-secondary">Review</a>
+                    {% endif %}
+                  </div>
+                  {% empty %}
+                  <div class="p-4 text-center text-muted small">No assignments posted.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6 mb-4">
+            <div class="card h-100">
+              <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0"><i class="fas fa-clipboard-check"></i> Online Quizzes &amp; Exams</h3>
+                <a href="{% url 'elearning_assessments' %}" class="btn btn-xs btn-secondary">View All</a>
+              </div>
+              <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                  {% for q in assessments %}
+                  <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong class="small">{{ q.title }}</strong>
+                      <small class="d-block text-muted">{{ q.get_assessment_type_display }} &middot; {{ q.duration_minutes }} min &middot; {{ q.total_marks|floatformat:0 }} marks</small>
+                    </div>
+                    {% if request.user.user_type == '3' %}
+                    <a href="{% url 'elearning_take_assessment' q.id %}" class="btn btn-xs btn-info">Start</a>
+                    {% else %}
+                    <a href="{% url 'elearning_assessment_manage' q.id %}" class="btn btn-xs btn-secondary">Manage</a>
+                    {% endif %}
+                  </div>
+                  {% empty %}
+                  <div class="p-4 text-center text-muted small">No online quizzes yet.</div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar: Teacher Authoring Tools + Announcements + Live Classes + Recordings -->
+      <div class="col-lg-4 mb-4">
+        {% if can_manage %}
+        <div class="card mb-3">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-folder-plus"></i> Add Topic</h3></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_topic">
+            <div class="card-body">
+              {% for field in topic_form %}
+              <div class="form-group mb-2">
+                {% if field.name == 'is_published' %}
+                <div class="form-check">{{ field }} <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="small mb-1">{{ field.label }}</label>{{ field }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-primary btn-sm btn-block">Create Topic</button></div>
+          </form>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-upload"></i> Upload Learning Material</h3></div>
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload_material">
+            <div class="card-body">
+              {% for field in material_form %}
+              <div class="form-group mb-2">
+                {% if field.name == 'allow_download' or field.name == 'is_published' %}
+                <div class="form-check">{{ field }} <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="small mb-1">{{ field.label }}</label>{{ field }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-info btn-sm btn-block">Upload Resource</button></div>
+          </form>
+        </div>
+
+        <div class="card mb-3">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-bullhorn"></i> Post Announcement</h3></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="post_announcement">
+            <div class="card-body">
+              {% for field in announcement_form %}
+              <div class="form-group mb-2">
+                {% if field.name == 'is_pinned' %}
+                <div class="form-check">{{ field }} <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="small mb-1">{{ field.label }}</label>{{ field }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-secondary btn-sm btn-block">Notify Class</button></div>
+          </form>
+        </div>
+        {% endif %}
+
+        <!-- Announcements Feed -->
+        <div class="card mb-3">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-bell"></i> Announcements</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for ann in announcements %}
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between"><strong class="small">{{ ann.title }}</strong><small class="text-muted">{{ ann.created_at|date:"M d" }}</small></div>
+                <div class="small text-muted mt-1">{{ ann.body }}</div>
+              </div>
+              {% empty %}
+              <div class="p-3 text-center text-muted small">No announcements yet.</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Classes & Recordings -->
+        <div class="card">
+          <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-video"></i> Live Lessons &amp; Recordings</h3></div>
+          <div class="card-body p-0">
+            <div class="list-group list-group-flush">
+              {% for vc in classrooms|slice:":4" %}
+              <div class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <strong class="small">{{ vc.title }}</strong>
+                  <small class="d-block text-muted">{{ vc.scheduled_start|date:"M d, H:i" }}</small>
+                </div>
+                <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-xs {% if vc.status == 'LIVE' %}btn-info{% else %}btn-secondary{% endif %}">{{ vc.get_status_display }}</a>
+              </div>
+              {% endfor %}
+              {% for rec in recordings|slice:":4" %}
+              <a href="{% url 'elearning_recordings' %}?subject={{ subject.id }}" class="list-group-item list-group-item-action small">
+                <i class="fas fa-play-circle text-info mr-1"></i> {{ rec.title }}
+              </a>
+              {% empty %}
+                {% if not classrooms %}
+                <div class="p-3 text-center text-muted small">No virtual lessons or recordings yet.</div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

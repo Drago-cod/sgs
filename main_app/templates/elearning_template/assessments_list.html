@@ -1,0 +1,100 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <div class="row">
+      {% if can_manage %}
+      <div class="col-lg-4 mb-4">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-plus-circle"></i> Create Quiz / Exam</h3>
+            <a href="{% url 'elearning_question_bank' %}" class="btn btn-xs btn-secondary">Question Bank</a>
+          </div>
+          <form method="post">
+            {% csrf_token %}
+            <div class="card-body">
+              {% for field in form %}
+              <div class="form-group mb-2">
+                {% if field.name in 'randomize_questions,randomize_choices,detect_tab_switch,allow_review,is_published' %}
+                <div class="form-check">{{ field }} <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="small mb-1">{{ field.label }}</label>{{ field }}
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            <div class="card-footer"><button type="submit" class="btn btn-primary btn-sm btn-block">Create &amp; Add Questions</button></div>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="{% if can_manage %}col-lg-8{% else %}col-12{% endif %} mb-4">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h3 class="card-title mb-0"><i class="fas fa-clipboard-check"></i> Assessments &amp; Examinations</h3>
+            <span class="badge badge-primary">{{ rows|length }} Total</span>
+          </div>
+          <div class="card-body table-responsive p-0">
+            <table class="table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Subject / Class</th>
+                  <th>Type &amp; Config</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in rows %}
+                {% with a=r.assessment att=r.student_attempt %}
+                <tr>
+                  <td>
+                    <strong>{{ a.title }}</strong>
+                    {% if a.topic %}<small class="d-block text-muted">Topic: {{ a.topic.title }}</small>{% endif %}
+                  </td>
+                  <td>{{ a.subject.name }}<small class="d-block text-muted">{{ a.course.name }}</small></td>
+                  <td class="small">
+                    <span class="badge badge-secondary">{{ a.get_assessment_type_display }}</span>
+                    <div class="text-muted mt-1">{{ a.question_count }} Qs &middot; {{ a.duration_minutes }}m &middot; {{ a.total_marks|floatformat:0 }} pts</div>
+                  </td>
+                  <td>
+                    {% if can_manage %}
+                      <span class="badge {% if a.is_published %}badge-success{% else %}badge-warning{% endif %}">{% if a.is_published %}Published{% else %}Draft{% endif %}</span>
+                      <small class="d-block text-muted mt-1">{{ a.attempt_count }} attempt{{ a.attempt_count|pluralize }}</small>
+                    {% elif att %}
+                      <span class="badge {% if att.status == 'GRADED' %}badge-success{% elif att.status == 'IN_PROGRESS' %}badge-info{% else %}badge-warning{% endif %}">{{ att.get_status_display }}</span>
+                      {% if att.status == 'GRADED' and a.results_published %}
+                      <small class="d-block font-weight-bold">{{ att.percentage }}%</small>
+                      {% endif %}
+                    {% else %}
+                      <span class="badge badge-primary">Not Started</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if can_manage %}
+                    <a href="{% url 'elearning_assessment_manage' a.id %}" class="btn btn-xs btn-primary"><i class="fas fa-cog mr-1"></i>Manage &amp; Grade</a>
+                    {% elif request.user.user_type == '3' %}
+                      {% if att and att.status != 'IN_PROGRESS' %}
+                      <a href="{% url 'elearning_attempt_result' att.id %}" class="btn btn-xs btn-secondary">View Result</a>
+                      {% endif %}
+                      <a href="{% url 'elearning_take_assessment' a.id %}" class="btn btn-xs btn-info">{% if att and att.status == 'IN_PROGRESS' %}Resume{% else %}Start{% endif %}</a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endwith %}
+                {% empty %}
+                <tr><td colspan="5" class="text-center py-5 text-muted">No online quizzes or examinations created yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}

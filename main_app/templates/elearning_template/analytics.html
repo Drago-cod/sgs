@@ -1,0 +1,123 @@
+{% extends 'main_app/base.html' %}
+{% block page_title %}{{ page_title }}{% endblock page_title %}
+
+{% block content %}
+<section class="content">
+  <div class="container-fluid">
+    <!-- Filters & Exports -->
+    <div class="card mb-4 no-print">
+      <div class="card-body py-3">
+        <form method="get" class="row align-items-end">
+          <div class="col-md-3 mb-2">
+            <label class="small">Class (S1–S4)</label>
+            <select name="course" class="form-control form-control-sm">
+              <option value="">All Classes</option>
+              {% for c in courses %}<option value="{{ c.id }}" {% if selected_course == c.id|stringformat:'s' %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3 mb-2">
+            <label class="small">Subject</label>
+            <select name="subject" class="form-control form-control-sm">
+              <option value="">All Subjects</option>
+              {% for s in subjects %}<option value="{{ s.id }}" {% if selected_subject == s.id|stringformat:'s' %}selected{% endif %}>{{ s.name }} ({{ s.course.name }})</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 mb-2">
+            <label class="small">Academic Term</label>
+            <select name="term" class="form-control form-control-sm">
+              <option value="">All Terms</option>
+              {% for t in terms %}<option value="{{ t.id }}" {% if selected_term == t.id|stringformat:'s' %}selected{% endif %}>{{ t }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4 mb-2 d-flex flex-wrap" style="gap:6px;">
+            <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter mr-1"></i>Apply</button>
+            <a href="?course={{ selected_course }}&subject={{ selected_subject }}&term={{ selected_term }}&export=csv" class="btn btn-secondary btn-sm"><i class="fas fa-file-excel mr-1 text-success"></i>Export CSV/Excel</a>
+            <button type="button" onclick="window.print()" class="btn btn-info btn-sm"><i class="fas fa-print mr-1"></i>Print PDF</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card p-4 mb-4">
+      {% now "F j, Y" as rep_date %}
+      {% include "main_app/document_header.html" with doc_title="eLearning Analytics & Engagement Report" doc_subtitle="Generated "|add:rep_date %}
+
+      <div class="row mb-4">
+        <div class="col-md-4 mb-2"><div class="sgs-kpi-card kpi-teal"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Subjects Analyzed</div><h3 class="sgs-kpi-value">{{ subject_analytics|length }}</h3></div></div></div></div>
+        <div class="col-md-4 mb-2"><div class="sgs-kpi-card kpi-navy"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Virtual Learning Hours</div><h3 class="sgs-kpi-value">{{ total_learning_hours }}<sup style="font-size:0.85rem;"> hrs</sup></h3></div></div></div></div>
+        <div class="col-md-4 mb-2"><div class="sgs-kpi-card kpi-amber"><div class="sgs-kpi-body"><div><div class="sgs-kpi-label">Media Storage Used</div><h3 class="sgs-kpi-value">{{ storage.total_mb }}<sup style="font-size:0.85rem;"> MB</sup></h3></div></div></div></div>
+      </div>
+
+      <div class="card mb-4 no-print">
+        <div class="card-header"><h3 class="card-title mb-0"><i class="fas fa-chart-bar"></i> Attendance Rate vs Quiz Average by Subject</h3></div>
+        <div class="card-body">
+          <canvas id="analyticsChart" style="min-height:260px;height:260px;max-height:260px;"></canvas>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-hover table-bordered mb-0">
+          <thead>
+            <tr>
+              <th>Class</th>
+              <th>Subject</th>
+              <th>Teacher</th>
+              <th>Students</th>
+              <th>Online Lessons</th>
+              <th>Materials</th>
+              <th>Assignments / Subs</th>
+              <th>Avg Quiz %</th>
+              <th>Attendance %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in subject_analytics %}
+            <tr>
+              <td>{{ row.subject.course.name }}</td>
+              <td class="font-weight-bold">{{ row.subject.name }}</td>
+              <td>{{ row.subject.staff.admin.get_full_name }}</td>
+              <td>{{ row.students_count }}</td>
+              <td>{{ row.lessons_count }}</td>
+              <td>{{ row.materials_count }}</td>
+              <td>{{ row.assignments_count }} / {{ row.submissions_count }}</td>
+              <td><span class="badge {% if row.quiz_avg >= 50 %}badge-success{% else %}badge-warning{% endif %}">{{ row.quiz_avg }}%</span></td>
+              <td><span class="badge {% if row.attendance_rate >= 75 %}badge-success{% elif row.attendance_rate >= 50 %}badge-warning{% else %}badge-danger{% endif %}">{{ row.attendance_rate }}%</span></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" class="text-center py-4 text-muted">No subject analytics available for the selected filters.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock content %}
+
+{% block custom_js %}
+<script>
+$(function () {
+  var canvas = document.getElementById("analyticsChart");
+  if (!canvas || !window.Chart) return;
+  new Chart(canvas.getContext("2d"), {
+    type: "bar",
+    data: {
+      labels: {{ chart_labels|safe }},
+      datasets: [
+        { label: "Attendance %", backgroundColor: "#14B8A6", data: {{ chart_attendance|safe }}, maxBarThickness: 28 },
+        { label: "Quiz Average %", backgroundColor: "#14243A", data: {{ chart_quiz_avg|safe }}, maxBarThickness: 28 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      legend: { position: "bottom", labels: { usePointStyle: true } },
+      scales: {
+        xAxes: [{ gridLines: { display: false } }],
+        yAxes: [{ ticks: { beginAtZero: true, max: 100 }, gridLines: { borderDash: [4, 4], color: "#E5EAF1" } }]
+      }
+    }
+  });
+});
+</script>
+{% endblock custom_js %}

@@ -18,7 +18,7 @@ from django.views.generic.base import RedirectView
 
 from main_app.EditResultView import EditResultView
 
-from . import bursar_views, dos_views, hod_views, staff_views, student_views, views
+from . import bursar_views, dos_views, elearning_views, hod_views, staff_views, student_views, views
 from .hod_views import manage_class_teachers
 from .staff_views import class_teacher_dashboard, view_class_students, send_class_results_sms, view_individual_results, view_student_result, send_result_sms, download_student_result, class_teacher_messages
 
@@ -233,4 +233,32 @@ urlpatterns = [
     path('send_result_sms/<int:student_id>/', send_result_sms, name='send_result_sms'),
     path('download_student_result/<int:student_id>/', download_student_result, name='download_student_result'),
     path('class_teacher_messages/', class_teacher_messages, name='class_teacher_messages'),
+
+    # Advanced eLearning & Virtual Classroom Module
+    path('elearning/', elearning_views.elearning_dashboard, name='elearning_dashboard'),
+    path('elearning/subject/<int:subject_id>/', elearning_views.subject_portal, name='elearning_subject_portal'),
+    path('elearning/materials/', elearning_views.material_library, name='elearning_material_library'),
+    path('elearning/materials/<int:material_id>/open/', elearning_views.open_learning_material, name='elearning_open_material'),
+    path('elearning/classrooms/', elearning_views.virtual_classrooms_list, name='elearning_classrooms'),
+    path('elearning/classrooms/<int:classroom_id>/room/', elearning_views.virtual_classroom_room, name='elearning_classroom_room'),
+    path('elearning/classrooms/<int:classroom_id>/heartbeat/', elearning_views.classroom_heartbeat, name='elearning_classroom_heartbeat'),
+    path('elearning/classrooms/<int:classroom_id>/leave/', elearning_views.classroom_leave, name='elearning_classroom_leave'),
+    path('elearning/classrooms/<int:classroom_id>/chat/', elearning_views.classroom_chat_api, name='elearning_classroom_chat'),
+    path('elearning/classrooms/<int:classroom_id>/whiteboard/', elearning_views.classroom_whiteboard_api, name='elearning_classroom_whiteboard'),
+    path('elearning/classrooms/<int:classroom_id>/control/', elearning_views.classroom_control_api, name='elearning_classroom_control'),
+    path('elearning/classrooms/<int:classroom_id>/attendance/', elearning_views.classroom_attendance_report, name='elearning_classroom_attendance'),
+    path('elearning/classrooms/<int:classroom_id>/upload-recording/', elearning_views.upload_classroom_recording, name='elearning_upload_recording'),
+    path('elearning/recordings/', elearning_views.recordings_library, name='elearning_recordings'),
+    path('elearning/assessments/', elearning_views.assessments_list, name='elearning_assessments'),
+    path('elearning/assessments/<int:assessment_id>/manage/', elearning_views.assessment_manage, name='elearning_assessment_manage'),
+    path('elearning/assessments/<int:assessment_id>/take/', elearning_views.take_assessment, name='elearning_take_assessment'),
+    path('elearning/assessments/<int:assessment_id>/autosave/', elearning_views.assessment_autosave, name='elearning_assessment_autosave'),
+    path('elearning/assessments/attempt/<int:attempt_id>/', elearning_views.assessment_attempt_result, name='elearning_attempt_result'),
+    path('elearning/question-bank/', elearning_views.question_bank_view, name='elearning_question_bank'),
+    path('elearning/discussions/', elearning_views.discussion_forums, name='elearning_discussions'),
+    path('elearning/discussions/<int:thread_id>/', elearning_views.discussion_thread_detail, name='elearning_discussion_detail'),
+    path('elearning/ai-assistant/', elearning_views.ai_learning_assistant, name='elearning_ai_assistant'),
+    path('elearning/analytics/', elearning_views.elearning_analytics, name='elearning_analytics'),
+    path('elearning/parent/', elearning_views.parent_guardian_portal, name='parent_guardian_portal'),
+    path('elearning/guardians/', elearning_views.manage_parent_links, name='elearning_manage_guardians'),
 ]
