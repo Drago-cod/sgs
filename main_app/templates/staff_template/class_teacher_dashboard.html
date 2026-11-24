@@ -5,74 +5,102 @@
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <div class="p-4 rounded mb-4 text-white" style="background: linear-gradient(135deg, #1e3a5f 0%, #17a2b8 100%); box-shadow: 0 4px 15px rgba(30,58,95,0.25);">
-            <h2 class="font-weight-bold mb-1"><i class="fas fa-chalkboard-teacher mr-2"></i> Class Teacher Dashboard — {{ course.name|default:"Unassigned" }}</h2>
-            <p class="mb-0" style="opacity:0.9;">Manage your assigned class students, attendance, student welfare, leave requests, and class reports.</p>
+        <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size: 0.45rem;"></i> Class Oversight</div>
+                <h2>Class Teacher Dashboard — {{ course.name|default:"Unassigned" }}</h2>
+                <p>Manage assigned class students, academic reports, student welfare, leave approvals, and parent SMS updates.</p>
+            </div>
+            <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap: 8px;">
+                <a href="{% url 'view_individual_results' %}" class="btn btn-info btn-sm"><i class="fas fa-poll mr-1"></i> Class Results</a>
+                <a href="{% url 'class_teacher_welfare' %}" class="btn btn-outline-light btn-sm"><i class="fas fa-hands-helping mr-1"></i> Welfare</a>
+            </div>
         </div>
 
         <div class="row mb-4">
-            <div class="col-lg-3 col-6 mb-3">
-                <div class="small-box bg-gradient-navy">
-                    <div class="inner">
-                        <h3>{{ total_students }}</h3>
-                        <p>Total Class Students</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-navy">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Class Students</div>
+                            <h3 class="sgs-kpi-value">{{ total_students }}</h3>
+                            <div class="sgs-kpi-sub">Enrolled in your class</div>
+                        </div>
+                        <div class="sgs-kpi-icon"><i class="fas fa-user-graduate"></i></div>
                     </div>
-                    <div class="icon"><i class="fas fa-user-graduate"></i></div>
-                    <a href="{% url 'view_class_students' %}" class="small-box-footer">View List <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{% url 'view_class_students' %}" class="sgs-kpi-footer">
+                        <span>View Class Roster</span><i class="fas fa-arrow-right"></i>
+                    </a>
                 </div>
             </div>
-            <div class="col-lg-3 col-6 mb-3">
-                <div class="small-box bg-gradient-teal">
-                    <div class="inner">
-                        <h3>{{ total_subjects }}</h3>
-                        <p>Total Class Subjects</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-teal">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Class Subjects</div>
+                            <h3 class="sgs-kpi-value">{{ total_subjects }}</h3>
+                            <div class="sgs-kpi-sub">Active curriculum courses</div>
+                        </div>
+                        <div class="sgs-kpi-icon"><i class="fas fa-book"></i></div>
                     </div>
-                    <div class="icon"><i class="fas fa-book"></i></div>
-                    <a href="{% url 'view_individual_results' %}" class="small-box-footer">Class Results <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{% url 'view_individual_results' %}" class="sgs-kpi-footer">
+                        <span>Class Results</span><i class="fas fa-arrow-right"></i>
+                    </a>
                 </div>
             </div>
-            <div class="col-lg-3 col-6 mb-3">
-                <div class="small-box bg-gradient-amber">
-                    <div class="inner">
-                        <h3>{{ course.name|default:"—" }}</h3>
-                        <p>Assigned Class</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-amber">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Assigned Class</div>
+                            <h3 class="sgs-kpi-value" style="font-size: 1.55rem;">{{ course.name|default:"—" }}</h3>
+                            <div class="sgs-kpi-sub">Welfare &amp; counseling</div>
+                        </div>
+                        <div class="sgs-kpi-icon"><i class="fas fa-hands-helping"></i></div>
                     </div>
-                    <div class="icon"><i class="fas fa-hands-helping"></i></div>
-                    <a href="{% url 'class_teacher_welfare' %}" class="small-box-footer text-dark font-weight-bold">Student Welfare <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{% url 'class_teacher_welfare' %}" class="sgs-kpi-footer">
+                        <span>Student Welfare</span><i class="fas fa-arrow-right"></i>
+                    </a>
                 </div>
             </div>
-            <div class="col-lg-3 col-6 mb-3">
-                <div class="small-box bg-gradient-green">
-                    <div class="inner">
-                        <h3>SMS</h3>
-                        <p>Reports &amp; Messaging</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-green">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Communications</div>
+                            <h3 class="sgs-kpi-value" style="font-size: 1.55rem;">SMS</h3>
+                            <div class="sgs-kpi-sub">Reports &amp; class messaging</div>
+                        </div>
+                        <div class="sgs-kpi-icon"><i class="fas fa-sms"></i></div>
                     </div>
-                    <div class="icon"><i class="fas fa-sms"></i></div>
-                    <a href="{% url 'class_teacher_messages' %}" class="small-box-footer">Class Messages <i class="fas fa-arrow-circle-right"></i></a>
+                    <a href="{% url 'class_teacher_messages' %}" class="sgs-kpi-footer">
+                        <span>Class Messages</span><i class="fas fa-arrow-right"></i>
+                    </a>
                 </div>
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-12 d-flex flex-wrap" style="gap: 8px;">
+        <div class="card mb-4">
+            <div class="card-body py-3 d-flex flex-wrap" style="gap: 8px;">
                 <a href="{% url 'view_class_students' %}" class="btn btn-primary btn-sm"><i class="fas fa-users mr-1"></i> Class Students &amp; SMS</a>
                 <a href="{% url 'view_individual_results' %}" class="btn btn-info btn-sm"><i class="fas fa-poll mr-1"></i> Individual Results &amp; PDFs</a>
-                <a href="{% url 'class_teacher_welfare' %}" class="btn btn-success btn-sm"><i class="fas fa-hands-helping mr-1"></i> Student Welfare</a>
-                <a href="{% url 'class_teacher_messages' %}" class="btn btn-warning btn-sm text-dark font-weight-bold"><i class="fas fa-envelope mr-1"></i> Class Messages</a>
-                <a href="{% url 'view_student_leave' %}" class="btn btn-dark btn-sm"><i class="fas fa-calendar-check mr-1"></i> Student Leave Requests</a>
-                <a href="{% url 'staff_home' %}" class="btn btn-secondary btn-sm"><i class="fas fa-tachometer-alt mr-1"></i> Teacher Home</a>
+                <a href="{% url 'class_teacher_welfare' %}" class="btn btn-secondary btn-sm"><i class="fas fa-hands-helping mr-1 text-success"></i> Student Welfare</a>
+                <a href="{% url 'class_teacher_messages' %}" class="btn btn-secondary btn-sm"><i class="fas fa-envelope mr-1 text-warning"></i> Class Messages</a>
+                <a href="{% url 'view_student_leave' %}" class="btn btn-secondary btn-sm"><i class="fas fa-calendar-check mr-1 text-primary"></i> Student Leave Requests</a>
+                <a href="{% url 'staff_home' %}" class="btn btn-secondary btn-sm"><i class="fas fa-th-large mr-1"></i> Teacher Home</a>
             </div>
         </div>
 
         <div class="row">
             <div class="col-12">
                 <div class="card">
-                    <div class="card-header bg-gradient-navy">
-                        <h3 class="card-title mb-0"><i class="fas fa-users mr-2"></i> Class Students for {{ course.name|default:"Your Class" }}</h3>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-users"></i> Class Students — {{ course.name|default:"Your Class" }}</h3>
+                        <span class="badge badge-primary">{{ students|length }} Students</span>
                     </div>
                     <div class="card-body table-responsive p-0">
                         <table id="example2" class="table table-hover mb-0">
-                            <thead class="thead-light">
+                            <thead>
                                 <tr>
                                     <th>#</th>
                                     <th>Student Name</th>
@@ -85,20 +113,20 @@
                             <tbody>
                                 {% for student in students %}
                                 <tr>
-                                    <td>{{ forloop.counter }}</td>
+                                    <td class="text-muted">{{ forloop.counter }}</td>
                                     <td class="font-weight-bold">{{ student.admin.last_name }}, {{ student.admin.first_name }}</td>
-                                    <td>{{ student.admin.email }}</td>
+                                    <td class="text-secondary">{{ student.admin.email }}</td>
                                     <td>{{ student.phone_number|default:"N/A" }}</td>
-                                    <td>{{ student.admin.gender|default:"—" }}</td>
+                                    <td><span class="badge badge-secondary">{{ student.admin.gender|default:"—" }}</span></td>
                                     <td>
-                                        <a href="{% url 'view_student_result' student.id %}" class="btn btn-info btn-xs">
-                                            <i class="fas fa-eye mr-1"></i> View Results
+                                        <a href="{% url 'view_student_result' student.id %}" class="btn btn-secondary btn-xs">
+                                            <i class="fas fa-eye mr-1 text-info"></i> View Results
                                         </a>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">No students currently enrolled in this class.</td>
+                                    <td colspan="6" class="text-center text-muted py-5">No students currently enrolled in this class.</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

@@ -4,114 +4,42 @@
 
 {% block custom_css %}
 <style>
-    .ai-hero {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 55%, #17a2b8 100%);
-        border-radius: 14px;
-        padding: 24px 28px;
-        color: #fff;
-        margin-bottom: 24px;
-        box-shadow: 0 6px 20px rgba(30, 58, 95, 0.25);
-    }
-    .ai-hero h2 {
-        font-weight: 700;
-        font-size: 1.5rem;
-        margin-bottom: 6px;
-    }
-    .ai-hero p {
-        margin-bottom: 0;
-        opacity: 0.9;
-        font-size: 0.94rem;
-    }
-    .stat-card {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        transition: all 0.25s ease;
-        position: relative;
-        min-height: 128px;
-        color: #fff;
-    }
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.18);
-    }
-    .stat-card .stat-body {
-        padding: 18px 22px;
-        position: relative;
-        z-index: 2;
-    }
-    .stat-card .stat-body h3 {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 2px;
-    }
-    .stat-card .stat-body p {
-        font-size: 0.9rem;
-        opacity: 0.92;
-        margin-bottom: 4px;
-        font-weight: 500;
-    }
-    .stat-card .stat-sub {
-        font-size: 0.78rem;
-        opacity: 0.85;
-    }
-    .stat-card .stat-icon {
-        position: absolute;
-        right: 18px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 3.1rem;
-        opacity: 0.2;
-        z-index: 1;
-    }
-    .bg-grad-navy { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); }
-    .bg-grad-teal { background: linear-gradient(135deg, #17a2b8 0%, #28a745 100%); }
-    .bg-grad-amber { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); }
-    .bg-grad-red { background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%); }
-
     .alert-feed-item {
-        border-left: 5px solid #17a2b8;
+        border-left: 4px solid var(--sgs-teal);
         padding: 16px 20px;
-        border-bottom: 1px solid #eef1f5;
-        transition: background 0.2s ease;
+        border-bottom: 1px solid #F1F5F9;
+        transition: background 0.18s ease;
     }
     .alert-feed-item:last-child { border-bottom: none; }
-    .alert-feed-item:hover { background: #f8fafc; }
-    .alert-feed-item.unread { background: #f0f9ff; }
-    .alert-feed-item.sev-CRITICAL { border-left-color: #dc3545; }
-    .alert-feed-item.sev-HIGH { border-left-color: #fd7e14; }
-    .alert-feed-item.sev-MEDIUM { border-left-color: #ffc107; }
-    .alert-feed-item.sev-LOW { border-left-color: #28a745; }
+    .alert-feed-item:hover { background: #F8FAFC; }
+    .alert-feed-item.unread { background: #F6FBFD; }
+    .alert-feed-item.sev-CRITICAL { border-left-color: #EF4444; }
+    .alert-feed-item.sev-HIGH { border-left-color: #F59E0B; }
+    .alert-feed-item.sev-MEDIUM { border-left-color: #3B82F6; }
+    .alert-feed-item.sev-LOW { border-left-color: #16A34A; }
 
     .recommendation-box {
-        background: #f4f7fb;
-        border-radius: 8px;
-        padding: 8px 12px;
-        font-size: 0.85rem;
-        color: #2c5282;
+        background: #F4F7FB;
+        border: 1px solid #E5EAF1;
+        border-radius: 10px;
+        padding: 9px 13px;
+        font-size: 0.84rem;
+        color: #1D3557;
         margin-top: 8px;
     }
     .risk-bar-wrap {
         min-width: 110px;
     }
     .risk-bar-wrap .progress {
-        height: 8px;
-        border-radius: 6px;
-        background: #e9ecef;
+        height: 7px;
+        border-radius: 999px;
+        background: #E2E8F0;
     }
     .filter-pill {
-        border-radius: 20px;
+        border-radius: 999px;
         padding: 4px 12px;
-        font-size: 0.82rem;
+        font-size: 0.8rem;
         font-weight: 600;
-    }
-    .grad-header-navy {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
-        color: #fff;
-    }
-    .grad-header-teal {
-        background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
-        color: #fff;
     }
 </style>
 {% endblock custom_css %}

@@ -2,281 +2,112 @@
 {% load static %}
 {% block page_title %}{{page_title}}{% endblock page_title %}
 
-{% block custom_css %}
-<style>
-    /* Gradient Stat Boxes */
-    .stat-card {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-        position: relative;
-        min-height: 140px;
-        color: #fff;
-    }
-    .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-    }
-    .stat-card .stat-body {
-        padding: 20px 25px;
-        position: relative;
-        z-index: 2;
-    }
-    .stat-card .stat-body h3 {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin-bottom: 2px;
-    }
-    .stat-card .stat-body p {
-        font-size: 0.95rem;
-        opacity: 0.9;
-        margin-bottom: 0;
-        font-weight: 500;
-    }
-    .stat-card .stat-icon {
-        position: absolute;
-        right: 20px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 3.5rem;
-        opacity: 0.2;
-        z-index: 1;
-    }
-    .stat-card .stat-footer {
-        display: block;
-        padding: 8px 25px;
-        background: rgba(0,0,0,0.15);
-        color: rgba(255,255,255,0.9);
-        text-decoration: none;
-        font-size: 0.85rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-    }
-    .stat-card .stat-footer:hover {
-        background: rgba(0,0,0,0.25);
-        color: #fff;
-        text-decoration: none;
-    }
-    .stat-card .stat-footer i {
-        transition: transform 0.3s ease;
-    }
-    .stat-card .stat-footer:hover i {
-        transform: translateX(3px);
-    }
-
-    /* Gradient backgrounds */
-    .bg-grad-navy { background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%); }
-    .bg-grad-teal { background: linear-gradient(135deg, #17a2b8 0%, #28a745 100%); }
-    .bg-grad-amber { background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%); }
-    .bg-grad-red { background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%); }
-
-    /* Chart Cards */
-    .chart-card {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-        border: none;
-        transition: all 0.3s ease;
-    }
-    .chart-card:hover {
-        box-shadow: 0 6px 20px rgba(0,0,0,0.12);
-    }
-    .chart-card .card-header {
-        border-bottom: none;
-        padding: 15px 20px;
-    }
-    .chart-card .card-header.grad-header-navy {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 100%);
-        color: #fff;
-    }
-    .chart-card .card-header.grad-header-teal {
-        background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
-        color: #fff;
-    }
-    .chart-card .card-header .card-title {
-        font-weight: 600;
-        font-size: 0.95rem;
-    }
-    .chart-card .card-header .btn-tool {
-        color: rgba(255,255,255,0.8);
-    }
-    .chart-card .card-header .btn-tool:hover {
-        color: #fff;
-    }
-    .chart-card .card-body {
-        padding: 20px;
-    }
-
-    /* Quick Actions */
-    .quick-actions-card {
-        border-radius: 12px;
-        overflow: hidden;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-        border: none;
-        background: #fff;
-    }
-    .quick-actions-card .card-header {
-        background: linear-gradient(135deg, #1e3a5f 0%, #17a2b8 100%);
-        color: #fff;
-        padding: 12px 20px;
-        border-bottom: none;
-    }
-    .quick-actions-card .card-header h3 {
-        font-weight: 600;
-        font-size: 0.95rem;
-        margin: 0;
-    }
-    .quick-action-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 22px 15px;
-        border-radius: 12px;
-        text-decoration: none;
-        transition: all 0.3s ease;
-        background: #f8f9fa;
-        border: 2px solid transparent;
-        min-height: 120px;
-    }
-    .quick-action-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 5px 20px rgba(0,0,0,0.12);
-        text-decoration: none;
-        border-color: transparent;
-    }
-    .quick-action-btn .qa-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.3rem;
-        margin-bottom: 10px;
-        color: #fff;
-        transition: transform 0.3s ease;
-    }
-    .quick-action-btn:hover .qa-icon {
-        transform: scale(1.1);
-    }
-    .quick-action-btn span {
-        font-size: 0.85rem;
-        font-weight: 600;
-        text-align: center;
-    }
-    .qa-navy { background: linear-gradient(135deg, #1e3a5f, #2c5282); }
-    .qa-teal { background: linear-gradient(135deg, #17a2b8, #28a745); }
-    .qa-amber { background: linear-gradient(135deg, #ffc107, #fd7e14); }
-    .qa-red { background: linear-gradient(135deg, #dc3545, #e83e8c); }
-    .quick-action-btn.qa-btn-navy { color: #1e3a5f; }
-    .quick-action-btn.qa-btn-navy:hover { background: rgba(30,58,95,0.05); border-color: #1e3a5f; }
-    .quick-action-btn.qa-btn-teal { color: #17a2b8; }
-    .quick-action-btn.qa-btn-teal:hover { background: rgba(23,162,184,0.05); border-color: #17a2b8; }
-    .quick-action-btn.qa-btn-amber { color: #e67e00; }
-    .quick-action-btn.qa-btn-amber:hover { background: rgba(255,193,7,0.08); border-color: #ffc107; }
-    .quick-action-btn.qa-btn-red { color: #dc3545; }
-    .quick-action-btn.qa-btn-red:hover { background: rgba(220,53,69,0.05); border-color: #dc3545; }
-
-    /* Dashboard header */
-    .dashboard-welcome {
-        background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #17a2b8 100%);
-        border-radius: 12px;
-        padding: 25px 30px;
-        color: #fff;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 15px rgba(30,58,95,0.3);
-    }
-    .dashboard-welcome h2 {
-        font-weight: 700;
-        font-size: 1.5rem;
-        margin-bottom: 5px;
-    }
-    .dashboard-welcome p {
-        opacity: 0.85;
-        font-size: 0.95rem;
-        margin: 0;
-    }
-</style>
-{% endblock custom_css %}
-
 {% block content %}
 <section class="content">
     <div class="container-fluid">
-        <!-- Dashboard Welcome -->
-        <div class="dashboard-welcome">
-            <h2><i class="fas fa-tachometer-alt mr-2"></i> Admin Dashboard</h2>
-            <p>Welcome back! Here's an overview of your school's data.</p>
+        <!-- Executive Welcome Banner -->
+        <div class="sgs-hero-banner d-flex flex-wrap justify-content-between align-items-center">
+            <div>
+                <div class="sgs-hero-eyebrow"><i class="fas fa-circle" style="font-size: 0.45rem;"></i> Institutional Overview</div>
+                <h2>Administrative Dashboard</h2>
+                <p>Monitor enrollment, faculty operations, attendance metrics, and school-wide administration.</p>
+            </div>
+            <div class="mt-3 mt-md-0 d-flex flex-wrap" style="gap: 8px;">
+                <a href="{% url 'admin_ai_attendance_dashboard' %}" class="btn btn-info btn-sm">
+                    <i class="fas fa-robot mr-1"></i> AI Attendance Tracker
+                </a>
+                <a href="{% url 'manage_user_roles' %}" class="btn btn-outline-light btn-sm">
+                    <i class="fas fa-user-shield mr-1"></i> Roles &amp; Access
+                </a>
+            </div>
         </div>
 
-        <!-- Stat Boxes Row -->
+        <!-- Enterprise KPI Row -->
         <div class="row mb-4">
-            <!-- Total Students -->
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                <div class="stat-card bg-grad-navy">
-                    <div class="stat-body">
-                        <h3>{{total_students}}</h3>
-                        <p>Total Students</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-navy">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Total Students</div>
+                            <h3 class="sgs-kpi-value">{{ total_students }}</h3>
+                            <div class="sgs-kpi-sub">Active enrolled learners</div>
+                        </div>
+                        <div class="sgs-kpi-icon">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
                     </div>
-                    <i class="fas fa-user-graduate stat-icon"></i>
-                    <a href="{% url 'manage_student' %}" class="stat-footer">
-                        More info <i class="fas fa-arrow-circle-right ml-1"></i>
+                    <a href="{% url 'manage_student' %}" class="sgs-kpi-footer">
+                        <span>Manage Students</span>
+                        <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
 
-            <!-- Total Staff -->
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                <div class="stat-card bg-grad-teal">
-                    <div class="stat-body">
-                        <h3>{{total_staff}}</h3>
-                        <p>Total Staff</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-teal">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Total Staff</div>
+                            <h3 class="sgs-kpi-value">{{ total_staff }}</h3>
+                            <div class="sgs-kpi-sub">Faculty &amp; academic staff</div>
+                        </div>
+                        <div class="sgs-kpi-icon">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                        </div>
                     </div>
-                    <i class="fas fa-chalkboard-teacher stat-icon"></i>
-                    <a href="{% url 'manage_staff' %}" class="stat-footer">
-                        More info <i class="fas fa-arrow-circle-right ml-1"></i>
+                    <a href="{% url 'manage_staff' %}" class="sgs-kpi-footer">
+                        <span>Manage Staff</span>
+                        <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
 
-            <!-- Total Classes -->
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                <div class="stat-card bg-grad-amber">
-                    <div class="stat-body">
-                        <h3>{{total_course}}</h3>
-                        <p>Total Classes</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-blue">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Total Classes</div>
+                            <h3 class="sgs-kpi-value">{{ total_course }}</h3>
+                            <div class="sgs-kpi-sub">Configured academic streams</div>
+                        </div>
+                        <div class="sgs-kpi-icon">
+                            <i class="fas fa-school"></i>
+                        </div>
                     </div>
-                    <i class="fas fa-school stat-icon"></i>
-                    <a href="{% url 'manage_course' %}" class="stat-footer">
-                        More info <i class="fas fa-arrow-circle-right ml-1"></i>
+                    <a href="{% url 'manage_course' %}" class="sgs-kpi-footer">
+                        <span>Manage Classes</span>
+                        <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
 
-            <!-- Total Subjects -->
-            <div class="col-xl-3 col-lg-6 col-md-6 col-sm-6 mb-3">
-                <div class="stat-card bg-grad-red">
-                    <div class="stat-body">
-                        <h3>{{total_subject}}</h3>
-                        <p>Total Subjects</p>
+            <div class="col-xl-3 col-md-6 mb-3">
+                <div class="sgs-kpi-card kpi-amber">
+                    <div class="sgs-kpi-body">
+                        <div>
+                            <div class="sgs-kpi-label">Total Subjects</div>
+                            <h3 class="sgs-kpi-value">{{ total_subject }}</h3>
+                            <div class="sgs-kpi-sub">Curriculum offerings</div>
+                        </div>
+                        <div class="sgs-kpi-icon">
+                            <i class="fas fa-book-open"></i>
+                        </div>
                     </div>
-                    <i class="fas fa-book-open stat-icon"></i>
-                    <a href="{% url 'manage_subject' %}" class="stat-footer">
-                        More info <i class="fas fa-arrow-circle-right ml-1"></i>
+                    <a href="{% url 'manage_subject' %}" class="sgs-kpi-footer">
+                        <span>Manage Subjects</span>
+                        <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             </div>
         </div>
-        <!-- /.row -->
 
         {% if admin_notifications %}
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card chart-card">
-                    <div class="card-header grad-header-navy d-flex justify-content-between align-items-center">
-                        <h3 class="card-title mb-0"><i class="fas fa-bell mr-2"></i> Recent Admin Notifications</h3>
-                        <a href="{% url 'admin_ai_attendance_dashboard' %}" class="btn btn-xs btn-warning text-dark font-weight-bold">
+                <div class="card">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                        <h3 class="card-title mb-0"><i class="fas fa-bell"></i> Recent Admin Notifications</h3>
+                        <a href="{% url 'admin_ai_attendance_dashboard' %}" class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-robot mr-1"></i> Open AI Attendance Tracker
                         </a>
                     </div>
@@ -285,11 +116,11 @@
                             {% for notification in admin_notifications %}
                             <a href="{{ notification.link }}" class="list-group-item list-group-item-action">
                                 <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <strong>{{ notification.category }}</strong>
+                                    <span class="badge badge-info">{{ notification.category }}</span>
                                     <small class="text-muted">{{ notification.created_at|date:'M d, Y H:i' }}</small>
                                 </div>
-                                <div class="font-weight-bold">{{ notification.title }}</div>
-                                <div class="text-muted">{{ notification.message }}</div>
+                                <div class="font-weight-bold text-dark">{{ notification.title }}</div>
+                                <div class="text-muted small">{{ notification.message }}</div>
                             </a>
                             {% endfor %}
                         </div>
@@ -299,31 +130,33 @@
         </div>
         {% endif %}
 
-        <!-- Charts Row -->
+        <!-- Analytics Row -->
         <div class="row mb-4">
-            <div class="col-lg-6 mb-3">
-                <div class="card chart-card">
-                    <div class="card-header grad-header-navy">
-                        <h3 class="card-title"><i class="fas fa-chart-pie mr-2"></i> Students & Staff Overview</h3>
+            <div class="col-lg-5 mb-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="card-title mb-0"><i class="fas fa-chart-pie"></i> Students &amp; Staff Overview</h3>
+                        </div>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                            <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <div class="chart">
+                    <div class="card-body d-flex align-items-center">
+                        <div class="chart w-100">
                             <canvas id="pieChart" style="min-height: 280px; height: 280px; max-height: 280px; max-width: 100%;"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="col-lg-6 mb-3">
-                <div class="card chart-card">
-                    <div class="card-header grad-header-teal">
-                        <h3 class="card-title"><i class="fas fa-chart-bar mr-2"></i> Attendance Per Subject</h3>
+            <div class="col-lg-7 mb-3">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h3 class="card-title mb-0"><i class="fas fa-chart-bar"></i> Attendance Per Subject</h3>
+                        </div>
                         <div class="card-tools">
                             <button type="button" class="btn btn-tool" data-card-widget="collapse"><i class="fas fa-minus"></i></button>
-                            <button type="button" class="btn btn-tool" data-card-widget="remove"><i class="fas fa-times"></i></button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -334,79 +167,86 @@
                 </div>
             </div>
         </div>
-        <!-- /.row -->
 
         <!-- Quick Actions -->
-        <div class="row mb-4">
+        <div class="row mb-2">
             <div class="col-12">
-                <div class="card quick-actions-card">
+                <div class="card">
                     <div class="card-header">
-                        <h3><i class="fas fa-bolt mr-2"></i> Quick Actions</h3>
+                        <h3 class="card-title mb-0"><i class="fas fa-bolt"></i> Quick Actions</h3>
                     </div>
                     <div class="card-body">
                         <div class="row">
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'add_staff' %}" class="quick-action-btn qa-btn-navy">
-                                    <div class="qa-icon qa-navy">
-                                        <i class="fas fa-user-plus"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'add_staff' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-navy"><i class="fas fa-user-plus"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">Add Staff</div>
+                                        <div class="sgs-tile-desc">Register faculty or role users</div>
                                     </div>
-                                    <span>Add Staff</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'add_student' %}" class="quick-action-btn qa-btn-teal">
-                                    <div class="qa-icon qa-teal">
-                                        <i class="fas fa-user-graduate"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'add_student' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-teal"><i class="fas fa-user-graduate"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">Add Student</div>
+                                        <div class="sgs-tile-desc">Enroll a new student profile</div>
                                     </div>
-                                    <span>Add Student</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'add_course' %}" class="quick-action-btn qa-btn-amber">
-                                    <div class="qa-icon qa-amber">
-                                        <i class="fas fa-school"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'add_course' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-amber"><i class="fas fa-school"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">Add Class</div>
+                                        <div class="sgs-tile-desc">Configure a class or stream</div>
                                     </div>
-                                    <span>Add Class</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'add_subject' %}" class="quick-action-btn qa-btn-red">
-                                    <div class="qa-icon qa-red">
-                                        <i class="fas fa-book-open"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'add_subject' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-red"><i class="fas fa-book-open"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">Add Subject</div>
+                                        <div class="sgs-tile-desc">Assign curriculum subjects</div>
                                     </div>
-                                    <span>Add Subject</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'admin_ai_attendance_dashboard' %}" class="quick-action-btn qa-btn-teal">
-                                    <div class="qa-icon qa-teal">
-                                        <i class="fas fa-robot"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'admin_ai_attendance_dashboard' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-teal"><i class="fas fa-robot"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">AI Attendance Tracker</div>
+                                        <div class="sgs-tile-desc">Review risk alerts &amp; trends</div>
                                     </div>
-                                    <span>AI Attendance Tracker</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'manage_user_roles' %}" class="quick-action-btn qa-btn-navy">
-                                    <div class="qa-icon qa-navy">
-                                        <i class="fas fa-user-shield"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'manage_user_roles' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-navy"><i class="fas fa-user-shield"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">User Roles &amp; Access</div>
+                                        <div class="sgs-tile-desc">Audit permissions across roles</div>
                                     </div>
-                                    <span>User Roles &amp; Access</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'dos_home' %}" class="quick-action-btn qa-btn-amber">
-                                    <div class="qa-icon qa-amber">
-                                        <i class="fas fa-graduation-cap"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'dos_home' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-amber"><i class="fas fa-graduation-cap"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">DOS Academics Hub</div>
+                                        <div class="sgs-tile-desc">Exams, timetables &amp; results</div>
                                     </div>
-                                    <span>DOS Academics Hub</span>
                                 </a>
                             </div>
-                            <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
-                                <a href="{% url 'bursar_home' %}" class="quick-action-btn qa-btn-red">
-                                    <div class="qa-icon qa-red">
-                                        <i class="fas fa-coins"></i>
+                            <div class="col-xl-3 col-md-6 mb-3">
+                                <a href="{% url 'bursar_home' %}" class="sgs-action-tile">
+                                    <div class="sgs-tile-icon tone-green"><i class="fas fa-coins"></i></div>
+                                    <div>
+                                        <div class="sgs-tile-title">Bursar &amp; Finance</div>
+                                        <div class="sgs-tile-desc">Fee collection &amp; receipts</div>
                                     </div>
-                                    <span>Bursar &amp; Finance</span>
                                 </a>
                             </div>
                         </div>
@@ -414,106 +254,95 @@
                 </div>
             </div>
         </div>
-        <!-- /.row -->
-
-    </div><!-- /.container-fluid -->
+    </div>
 </section>
 {% endblock content %}
 
 {% block custom_js %}
 <script>
     $(document).ready(function(){
-      var donutData        = {
+      var donutData = {
           labels: ['Students', 'Staff'],
           datasets: [
             {
-              data:[{{total_students}}, {{total_staff}}],
-              backgroundColor : ['#1e3a5f', '#17a2b8'],
-              borderWidth: 2,
-              borderColor: '#fff',
+              data: [{{total_students}}, {{total_staff}}],
+              backgroundColor: ['#14243A', '#14B8A6'],
+              hoverBackgroundColor: ['#1D3557', '#0D9488'],
+              borderWidth: 3,
+              borderColor: '#FFFFFF'
             }
           ]
-        }
-      var pieChartCanvas = $('#pieChart').get(0).getContext('2d')
-      var pieData        = donutData;
-      var pieOptions     = {
-        maintainAspectRatio : false,
-        responsive : true,
+        };
+      var pieChartCanvas = $('#pieChart').get(0).getContext('2d');
+      var pieOptions = {
+        maintainAspectRatio: false,
+        responsive: true,
+        cutoutPercentage: 66,
         legend: {
           position: 'bottom',
           labels: {
             padding: 20,
-            fontFamily: "'Inter', 'Source Sans Pro', sans-serif",
-            fontSize: 13
+            usePointStyle: true,
+            fontFamily: "'Inter', sans-serif",
+            fontColor: '#475569',
+            fontSize: 12
           }
         }
-      }
-      //Create pie or douhnut chart
-      // You can switch between pie and douhnut using the method below.
-      var pieChart = new Chart(pieChartCanvas, {
-        type: 'pie',
-        data: pieData,
-        options: pieOptions      
+      };
+      new Chart(pieChartCanvas, {
+        type: 'doughnut',
+        data: donutData,
+        options: pieOptions
       });
 
       var subject_list = {{ subject_list|safe|escape }};
       var attendance_list = {{ attendance_list }};
 
-          var barChartData = {
-    labels  : subject_list,
-    datasets: [
-    {
-      label               : 'Attendance Per Subject',
-      backgroundColor     : '#17a2b8',
-      borderColor         : 'rgba(23,162,184,0.8)',
-      pointRadius          : false,
-      pointColor          : '#3b8bba',
-      pointStrokeColor    : 'rgba(60,141,188,1)',
-      pointHighlightFill  : '#fff',
-      pointHighlightStroke: 'rgba(60,141,188,1)',
-      data                : attendance_list,
-      borderRadius        : 6,
-      borderWidth         : 0,
-    }, 
-    
-    ]
-  }
-      var barChartCanvas = $('#barChart').get(0).getContext('2d')
-      var temp0 = barChartData.datasets[0]
-      //var temp1 = areaChartData.datasets[1]
-      barChartData.datasets[0] = temp0
-     // barChartData.datasets[1] = temp0
-  
-  var stackedBarChartOptions = {
-    responsive              : true,
-    maintainAspectRatio     : false,
-    legend: {
-      display: false
-    },
-    scales: {
-      xAxes: [{
-        stacked: true,
-        gridLines: { display: false },
-        ticks: {
-          fontFamily: "'Inter', 'Source Sans Pro', sans-serif"
+      var barChartData = {
+        labels: subject_list,
+        datasets: [
+          {
+            label: 'Attendance Sessions',
+            backgroundColor: '#14B8A6',
+            hoverBackgroundColor: '#0D9488',
+            borderColor: '#14B8A6',
+            borderWidth: 0,
+            barPercentage: 0.55,
+            maxBarThickness: 36,
+            data: attendance_list
+          }
+        ]
+      };
+      var barChartCanvas = $('#barChart').get(0).getContext('2d');
+      var barChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        legend: { display: false },
+        scales: {
+          xAxes: [{
+            gridLines: { display: false },
+            ticks: {
+              fontFamily: "'Inter', sans-serif",
+              fontColor: '#64748B'
+            }
+          }],
+          yAxes: [{
+            gridLines: { borderDash: [4, 4], color: '#E5EAF1', drawBorder: false },
+            ticks: {
+              fontFamily: "'Inter', sans-serif",
+              fontColor: '#64748B',
+              beginAtZero: true,
+              precision: 0
+            }
+          }]
         }
-      }],
-      yAxes: [{
-        stacked: true,
-        gridLines: { borderDash: [3,3], color: 'rgba(0,0,0,0.05)' },
-        ticks: {
-          fontFamily: "'Inter', 'Source Sans Pro', sans-serif",
-          beginAtZero: true
-        }
-      }]
-    }
-  }
-  
-      var barChart = new Chart(barChartCanvas, {
-        type: 'bar', 
+      };
+
+      new Chart(barChartCanvas, {
+        type: 'bar',
         data: barChartData,
-        options: stackedBarChartOptions
-      })
-    })
+        options: barChartOptions
+      });
+    });
 </script>
 {% endblock custom_js %}

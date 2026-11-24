@@ -1,189 +1,225 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>Students' Grading System | Log in</title>
+    <title>JASS — Sign In</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}" />
     <link rel="stylesheet" href="{% static 'plugins/icheck-bootstrap/icheck-bootstrap.min.css' %}" />
     <link rel="stylesheet" href="{% static 'dist/css/adminlte.min.css' %}" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&display=swap" rel="stylesheet" />
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --sgs-navy: #14243A;
+            --sgs-navy-light: #1D3557;
+            --sgs-teal: #14B8A6;
+            --sgs-teal-dark: #0D9488;
+            --sgs-bg: #F4F7FB;
+            --sgs-surface: #FFFFFF;
+            --sgs-text: #172033;
+            --sgs-muted: #64748B;
+            --sgs-border: #E5EAF1;
+            --sgs-border-strong: #CBD5E1;
+            --sgs-danger: #EF4444;
         }
 
+        * { box-sizing: border-box; }
+
         body.login-page {
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #17a2b8 100%);
+            margin: 0;
             min-height: 100vh;
+            background: var(--sgs-bg);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--sgs-text);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Inter', 'Source Sans Pro', sans-serif;
-            position: relative;
+            padding: 24px 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .auth-shell {
+            width: 100%;
+            max-width: 960px;
+            background: var(--sgs-surface);
+            border: 1px solid var(--sgs-border);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(20, 36, 58, 0.08), 0 4px 14px rgba(20, 36, 58, 0.04);
+            display: grid;
+            grid-template-columns: 1.05fr 1fr;
             overflow: hidden;
         }
 
-        /* Animated background shapes */
-        body.login-page::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 80% 20%, rgba(23,162,184,0.1) 0%, transparent 40%),
-                        radial-gradient(circle at 50% 80%, rgba(30,58,95,0.1) 0%, transparent 40%);
-            animation: bgShift 20s ease-in-out infinite;
-            z-index: 0;
-        }
-
-        @keyframes bgShift {
-            0%, 100% { transform: translate(0, 0) rotate(0deg); }
-            33% { transform: translate(2%, -2%) rotate(1deg); }
-            66% { transform: translate(-1%, 1%) rotate(-0.5deg); }
-        }
-
-        /* Floating geometric shapes */
-        .bg-shape {
-            position: absolute;
-            border-radius: 50%;
-            opacity: 0.06;
-            z-index: 0;
-        }
-
-        .bg-shape-1 {
-            width: 400px;
-            height: 400px;
-            background: #ffffff;
-            top: -100px;
-            right: -100px;
-            animation: float1 15s ease-in-out infinite;
-        }
-
-        .bg-shape-2 {
-            width: 300px;
-            height: 300px;
-            background: #17a2b8;
-            bottom: -80px;
-            left: -80px;
-            animation: float2 18s ease-in-out infinite;
-        }
-
-        .bg-shape-3 {
-            width: 200px;
-            height: 200px;
-            background: #ffc107;
-            top: 50%;
-            left: 10%;
-            animation: float3 12s ease-in-out infinite;
-        }
-
-        @keyframes float1 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(-30px, 30px) scale(1.05); }
-        }
-
-        @keyframes float2 {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            50% { transform: translate(20px, -20px) scale(1.08); }
-        }
-
-        @keyframes float3 {
-            0%, 100% { transform: translate(0, 0); }
-            50% { transform: translate(15px, -25px); }
-        }
-
-        .login-box {
-            width: 420px;
-            max-width: 95%;
-            z-index: 10;
+        /* Left Brand Panel */
+        .auth-brand-panel {
+            background: linear-gradient(155deg, #14243A 0%, #1D3557 100%);
+            color: #FFFFFF;
+            padding: 48px 42px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
             position: relative;
         }
 
-        .login-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border-radius: 20px;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3),
-                        0 0 0 1px rgba(255, 255, 255, 0.1);
-            padding: 45px 40px 35px;
-            animation: cardSlideUp 0.6s ease-out;
+        .auth-brand-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #14B8A6 0%, rgba(20, 184, 166, 0.25) 100%);
         }
 
-        @keyframes cardSlideUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 35px;
-        }
-
-        .login-header .logo-wrapper {
-            display: inline-flex;
+        .brand-crest-row {
+            display: flex;
             align-items: center;
-            justify-content: center;
-            width: 90px;
-            height: 90px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #1e3a5f, #17a2b8);
-            padding: 4px;
-            margin-bottom: 18px;
-            box-shadow: 0 8px 25px rgba(30, 58, 95, 0.3);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            gap: 14px;
+            margin-bottom: 34px;
         }
 
-        .login-header .logo-wrapper:hover {
-            transform: scale(1.05);
-            box-shadow: 0 12px 35px rgba(30, 58, 95, 0.4);
+        .brand-crest {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 2px solid rgba(20, 184, 166, 0.65);
+            background: #FFFFFF;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
         }
 
-        .login-header .logo-wrapper img {
+        .brand-crest img {
             width: 100%;
             height: 100%;
-            border-radius: 50%;
             object-fit: cover;
         }
 
-        .login-header h4 {
-            color: #1e3a5f;
-            font-weight: 700;
-            font-size: 1.15rem;
-            margin-bottom: 4px;
-            letter-spacing: 0.3px;
-        }
-
-        .login-header .school-abbr {
-            color: #17a2b8;
+        .brand-eyebrow {
+            font-size: 0.72rem;
             font-weight: 600;
-            font-size: 0.9rem;
-            letter-spacing: 2px;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
+            color: var(--sgs-teal);
+            margin-bottom: 3px;
         }
 
-        .login-header .subtitle {
-            color: #8896a4;
+        .brand-school-name {
+            font-size: 1.02rem;
+            font-weight: 700;
+            line-height: 1.25;
+            color: #FFFFFF;
+        }
+
+        .brand-headline {
+            font-size: 1.65rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.25;
+            margin-bottom: 12px;
+            color: #FFFFFF;
+        }
+
+        .brand-copy {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: rgba(226, 232, 240, 0.82);
+            margin-bottom: 28px;
+        }
+
+        .brand-features {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 12px;
+        }
+
+        .brand-features li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             font-size: 0.85rem;
-            margin-top: 12px;
-            font-weight: 400;
+            color: #E2E8F0;
         }
 
-        .form-group {
-            margin-bottom: 20px;
+        .brand-features .feat-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 7px;
+            background: rgba(20, 184, 166, 0.16);
+            color: var(--sgs-teal);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            flex-shrink: 0;
+        }
+
+        .brand-footer-note {
+            margin-top: 32px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.78rem;
+            color: rgba(203, 213, 225, 0.75);
+        }
+
+        /* Right Form Panel */
+        .auth-form-panel {
+            padding: 48px 42px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: var(--sgs-surface);
+        }
+
+        .mobile-brand {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .mobile-brand img {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1.5px solid var(--sgs-teal);
+        }
+
+        .form-heading {
+            margin-bottom: 28px;
+        }
+
+        .form-heading h2 {
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--sgs-text);
+            letter-spacing: -0.025em;
+            margin: 0 0 6px;
+        }
+
+        .form-heading p {
+            margin: 0;
+            color: var(--sgs-muted);
+            font-size: 0.88rem;
+        }
+
+        .field-group {
+            margin-bottom: 18px;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--sgs-text);
+            margin-bottom: 6px;
         }
 
         .input-group-custom {
@@ -194,47 +230,62 @@
 
         .input-group-custom .input-icon {
             position: absolute;
-            left: 16px;
-            color: #a0aec0;
-            font-size: 0.95rem;
-            z-index: 5;
-            transition: color 0.3s ease;
+            left: 14px;
+            color: #94A3B8;
+            font-size: 0.88rem;
+            pointer-events: none;
+            transition: color 180ms ease;
         }
 
         .input-group-custom input {
             width: 100%;
-            padding: 14px 16px 14px 46px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-family: 'Inter', sans-serif;
-            color: #2d3748;
-            background: #f8fafc;
-            transition: all 0.3s ease;
+            height: 44px;
+            padding: 10px 14px 10px 40px;
+            border: 1px solid var(--sgs-border-strong);
+            border-radius: 10px;
+            font-size: 0.92rem;
+            font-family: inherit;
+            color: var(--sgs-text);
+            background: var(--sgs-surface);
+            transition: border-color 180ms ease, box-shadow 180ms ease;
             outline: none;
         }
 
         .input-group-custom input:focus {
-            border-color: #17a2b8;
-            background: #ffffff;
-            box-shadow: 0 0 0 4px rgba(23, 162, 184, 0.1);
+            border-color: var(--sgs-teal);
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
         }
 
-        .input-group-custom input:focus + .input-icon,
         .input-group-custom input:focus ~ .input-icon {
-            color: #17a2b8;
+            color: var(--sgs-teal-dark);
         }
 
         .input-group-custom input::placeholder {
-            color: #a0aec0;
-            font-weight: 400;
+            color: #94A3B8;
+        }
+
+        .toggle-pwd-btn {
+            position: absolute;
+            right: 10px;
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            padding: 6px 8px;
+            border-radius: 6px;
+            transition: color 150ms ease, background-color 150ms ease;
+        }
+
+        .toggle-pwd-btn:hover {
+            color: var(--sgs-navy);
+            background: var(--sgs-bg);
         }
 
         .remember-forgot {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 25px;
+            margin: 6px 0 22px;
         }
 
         .remember-forgot .icheck-primary {
@@ -242,170 +293,179 @@
         }
 
         .remember-forgot .icheck-primary label {
-            font-size: 0.85rem;
-            color: #718096;
-            font-weight: 400;
+            font-size: 0.84rem;
+            color: var(--sgs-muted);
+            font-weight: 500;
             cursor: pointer;
         }
 
         .forgot-link {
-            font-size: 0.85rem;
-            color: #17a2b8;
+            font-size: 0.84rem;
+            color: var(--sgs-teal-dark);
+            font-weight: 600;
             text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s ease;
         }
 
         .forgot-link:hover {
-            color: #1e3a5f;
-            text-decoration: none;
+            color: var(--sgs-navy);
+            text-decoration: underline;
         }
 
         .btn-login {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #1e3a5f 0%, #2c5282 50%, #17a2b8 100%);
-            border: none;
-            border-radius: 12px;
-            color: #ffffff;
-            font-size: 1rem;
+            height: 46px;
+            background: var(--sgs-navy);
+            border: 1px solid var(--sgs-navy);
+            border-radius: 10px;
+            color: #FFFFFF;
+            font-size: 0.94rem;
             font-weight: 600;
-            font-family: 'Inter', sans-serif;
+            font-family: inherit;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(30, 58, 95, 0.35);
-            letter-spacing: 0.5px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .btn-login::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-            transition: left 0.5s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 180ms ease, transform 140ms ease, box-shadow 180ms ease;
+            box-shadow: 0 2px 8px rgba(20, 36, 58, 0.18);
         }
 
         .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(30, 58, 95, 0.45);
-        }
-
-        .btn-login:hover::before {
-            left: 100%;
+            background: var(--sgs-navy-light);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(20, 36, 58, 0.22);
         }
 
         .btn-login:active {
             transform: translateY(0);
         }
 
-        .btn-login i {
-            margin-right: 8px;
-        }
-
-        .alert {
+        .alert-danger {
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            color: #991B1B;
             border-radius: 10px;
-            font-size: 0.88rem;
-            padding: 12px 16px;
-            border: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 11px 14px;
             margin-bottom: 20px;
         }
 
-        .alert-danger {
-            background: rgba(220, 53, 69, 0.1);
-            color: #c53030;
-            border-left: 4px solid #dc3545;
-        }
-
         .login-footer {
+            margin-top: 28px;
+            padding-top: 18px;
+            border-top: 1px solid var(--sgs-border);
             text-align: center;
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid #e2e8f0;
-        }
-
-        .login-footer p {
-            color: #a0aec0;
             font-size: 0.78rem;
-            margin: 0;
+            color: var(--sgs-muted);
         }
 
-        .login-footer p strong {
-            color: #17a2b8;
+        .login-footer strong {
+            color: var(--sgs-navy);
         }
 
-        /* Responsive */
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 35px 25px 25px;
-                border-radius: 16px;
+        @media (max-width: 820px) {
+            .auth-shell {
+                grid-template-columns: 1fr;
+                max-width: 440px;
             }
-
-            .login-header .logo-wrapper {
-                width: 75px;
-                height: 75px;
+            .auth-brand-panel {
+                display: none;
             }
-
-            .login-header h4 {
-                font-size: 1rem;
+            .mobile-brand {
+                display: flex;
+            }
+            .auth-form-panel {
+                padding: 36px 28px;
             }
         }
     </style>
 </head>
 
 <body class="hold-transition login-page">
-    <!-- Background shapes -->
-    <div class="bg-shape bg-shape-1"></div>
-    <div class="bg-shape bg-shape-2"></div>
-    <div class="bg-shape bg-shape-3"></div>
-
-    <div class="login-box">
-        <div class="login-card">
-            <!-- Header / Logo -->
-            <div class="login-header">
-                <div class="logo-wrapper">
-                    <img src="{% static 'img/logo.jpeg' %}" alt="School Logo" />
+    <div class="auth-shell">
+        <div class="auth-brand-panel">
+            <div>
+                <div class="brand-crest-row">
+                    <div class="brand-crest">
+                        <img src="{% static 'img/logo.jpeg' %}" alt="School Logo" />
+                    </div>
+                    <div>
+                        <div class="brand-eyebrow">JASS Academic Portal</div>
+                        <div class="brand-school-name">Juba Adventist Secondary School</div>
+                    </div>
                 </div>
-                <h4>JUBA ADVENTIST SECONDARY SCHOOL</h4>
-                <span class="school-abbr">(JASS)</span>
-                <p class="subtitle"><i class="fas fa-sign-in-alt mr-1"></i> Sign in to your account</p>
+
+                <h1 class="brand-headline">Unified Academic &amp; Institutional Management</h1>
+                <p class="brand-copy">
+                    A centralized workspace for principals, directors of studies, teachers, bursars, and students.
+                </p>
+
+                <ul class="brand-features">
+                    <li>
+                        <span class="feat-dot"><i class="fas fa-chart-line"></i></span>
+                        <span>Real-time academic grading, timetables, and results</span>
+                    </li>
+                    <li>
+                        <span class="feat-dot"><i class="fas fa-robot"></i></span>
+                        <span>AI-assisted attendance tracking &amp; assignment integrity</span>
+                    </li>
+                    <li>
+                        <span class="feat-dot"><i class="fas fa-file-invoice-dollar"></i></span>
+                        <span>Transparent fee accounting &amp; official school documents</span>
+                    </li>
+                </ul>
             </div>
 
-            <!-- Messages -->
+            <div class="brand-footer-note">
+                Seventh-day Round About, Juba, South Sudan &middot; Secure Role-Based Access
+            </div>
+        </div>
+
+        <div class="auth-form-panel">
+            <div class="mobile-brand">
+                <img src="{% static 'img/logo.jpeg' %}" alt="School Logo" />
+                <div>
+                    <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#0D9488;">JASS Portal</div>
+                    <div style="font-size:0.92rem;font-weight:700;color:#14243A;">Juba Adventist Secondary School</div>
+                </div>
+            </div>
+
+            <div class="form-heading">
+                <h2>Welcome back</h2>
+                <p>Sign in with your institutional credentials to continue.</p>
+            </div>
+
             {% if messages %}
             <div>
                 {% for message in messages %}
                     {% if message.tags == 'error' %}
-                    <div class="alert alert-danger text-center">
-                        <i class="fas fa-exclamation-circle mr-1"></i> {{ message }}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle mr-2"></i>{{ message }}
                     </div>
                     {% endif %}
                 {% endfor %}
             </div>
             {% endif %}
 
-            <!-- Login Form -->
             <form action="doLogin/" method="post">
                 {% csrf_token %}
 
-                <div class="form-group">
+                <div class="field-group">
+                    <label class="field-label" for="loginEmail">Email Address</label>
                     <div class="input-group-custom">
-                        <input required type="email" name="email" placeholder="Email Address" autocomplete="email" />
-                        <span class="input-icon"><i class="fas fa-envelope"></i></span>
+                        <input required id="loginEmail" type="email" name="email" placeholder="name@school.edu" autocomplete="email" />
+                        <span class="input-icon"><i class="far fa-envelope"></i></span>
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="field-group">
+                    <label class="field-label" for="loginPassword">Password</label>
                     <div class="input-group-custom">
-                        <input required id="loginPassword" type="password" name="password" placeholder="Password" autocomplete="current-password" style="padding-right: 44px;" />
+                        <input required id="loginPassword" type="password" name="password" placeholder="Enter your password" autocomplete="current-password" style="padding-right: 44px;" />
                         <span class="input-icon"><i class="fas fa-lock"></i></span>
-                        <button type="button" id="togglePasswordBtn" aria-label="Show password"
-                                style="position:absolute;right:12px;background:none;border:none;color:#8896a4;cursor:pointer;padding:4px 6px;">
-                            <i class="fas fa-eye"></i>
+                        <button type="button" id="togglePasswordBtn" class="toggle-pwd-btn" aria-label="Show password">
+                            <i class="far fa-eye"></i>
                         </button>
                     </div>
                 </div>
@@ -413,28 +473,25 @@
                 <div class="remember-forgot">
                     <div class="icheck-primary">
                         <input type="checkbox" id="remember" />
-                        <label for="remember">Remember Me</label>
+                        <label for="remember">Remember me</label>
                     </div>
-                    <a href="{% url 'password_reset' %}" class="forgot-link">Forgot Password?</a>
+                    <a href="{% url 'password_reset' %}" class="forgot-link">Forgot password?</a>
                 </div>
 
                 <button type="submit" class="btn-login">
-                    <i class="fas fa-sign-in-alt"></i> Sign In
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right" style="font-size: 0.82rem;"></i>
                 </button>
             </form>
 
-            <!-- Footer -->
             <div class="login-footer">
-                <p>JASS - Students' Grading System &bull; Designed by <strong>Drago-cod</strong></p>
+                JASS Students' Grading System &middot; Engineered by <strong>Drago-cod</strong>
             </div>
         </div>
     </div>
 
-    <!-- jQuery -->
     <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
-    <!-- Bootstrap 4 -->
     <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-    <!-- AdminLTE App -->
     <script src="{% static 'dist/js/adminlte.min.js' %}"></script>
     <script>
         (function () {
@@ -444,7 +501,7 @@
                 btn.addEventListener("click", function () {
                     var isHidden = pwd.type === "password";
                     pwd.type = isHidden ? "text" : "password";
-                    btn.innerHTML = isHidden ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+                    btn.innerHTML = isHidden ? '<i class="far fa-eye-slash"></i>' : '<i class="far fa-eye"></i>';
                 });
             }
         })();

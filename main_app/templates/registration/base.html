@@ -1,49 +1,37 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>AdminLTE 3 | Log in</title>
-    <!-- Tell the browser to be responsive to screen width -->
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}">
-    <!-- Ionicons -->
-    <link rel="stylesheet" href="{% static 'https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css' %}">
-    <!-- icheck bootstrap -->
-    <link rel="stylesheet" href="{% static 'plugins/icheck-bootstrap/icheck-bootstrap.min.css' %}">
-    <!-- Theme style -->
-    <link rel="stylesheet" href="{% static 'dist/css/adminlte.min.css' %}">
-    <!-- Google Font: Source Sans Pro -->
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700" rel="stylesheet">
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>JASS — Account Recovery</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{% static 'plugins/fontawesome-free/css/all.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'plugins/icheck-bootstrap/icheck-bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'dist/css/adminlte.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'dist/css/enterprise-theme.css' %}" />
 </head>
-
-<body class="hold-transition login-page">
-    <div class="login-box">
-        <div class="login-logo">
-            <a href="/"><b>Admin</b>LTE</a>
-
+<body class="hold-transition login-page" style="background: #F4F7FB; min-height: 100vh;">
+    <div class="login-box" style="width: 420px; max-width: 94%;">
+        <div class="text-center mb-4">
+            <a href="/" class="d-inline-flex align-items-center text-decoration-none" style="gap: 12px;">
+                <img src="{% static 'img/logo.jpeg' %}" alt="JASS Logo" style="width: 48px; height: 48px; border-radius: 12px; object-fit: cover; border: 2px solid #14B8A6;">
+                <div class="text-left">
+                    <div style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #0D9488;">JASS Portal</div>
+                    <div style="font-size: 1.05rem; font-weight: 700; color: #14243A;">Students' Grading System</div>
+                </div>
+            </a>
         </div>
-        <!-- /.login-logo -->
         <div class="card">
-           
           {% block content %}
-            
           {% endblock content %}
         </div>
     </div>
-    <!-- /.login-box -->
-
-    <!-- jQuery -->
     <script src="{% static 'plugins/jquery/jquery.min.js' %}"></script>
-    <!-- Bootstrap 4 -->
     <script src="{% static 'plugins/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-    <!-- AdminLTE App -->
     <script src="{% static 'dist/js/adminlte.min.js' %}"></script>
-
 </body>
-
 </html>
