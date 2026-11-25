@@ -477,15 +477,24 @@ class StudentWelfareForm(FormSettings):
 class FeeStructureForm(FormSettings):
     class Meta:
         model = FeeStructure
-        fields = ['course', 'session', 'title', 'amount', 'due_date', 'description']
+        fields = ['course', 'session', 'title', 'currency', 'amount', 'due_date', 'description']
         labels = {
             'course': 'Class',
             'session': 'Term',
+            'currency': 'Currency',
         }
         widgets = {
             'due_date': DateInput(attrs={'type': 'date'}),
             'description': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['currency'].choices = FeeStructure.CURRENCY_CHOICES
+        self.fields['currency'].required = False
+
+    def clean_currency(self):
+        return self.cleaned_data.get('currency') or 'SSP'
 
 
 class FeePaymentForm(FormSettings):
@@ -494,16 +503,34 @@ class FeePaymentForm(FormSettings):
         fields = [
             'student',
             'fee_structure',
+            'currency',
             'amount_paid',
             'payment_date',
             'payment_method',
             'reference_code',
             'notes',
         ]
+        labels = {
+            'currency': 'Currency',
+        }
         widgets = {
             'payment_date': DateInput(attrs={'type': 'date'}),
             'notes': forms.Textarea(attrs={'rows': 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['currency'].choices = FeeStructure.CURRENCY_CHOICES
+        self.fields['currency'].required = False
+
+    def clean_currency(self):
+        currency = self.cleaned_data.get('currency')
+        if currency:
+            return currency
+        fee_structure = self.cleaned_data.get('fee_structure')
+        if fee_structure:
+            return fee_structure.currency
+        return 'SSP'
 
 
 class TeacherPerformanceFeedbackForm(FormSettings):

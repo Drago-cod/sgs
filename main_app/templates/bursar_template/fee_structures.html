@@ -40,6 +40,7 @@
                                     <th>Class</th>
                                     <th>Term</th>
                                     <th>Title</th>
+                                    <th>Currency</th>
                                     <th>Amount</th>
                                     <th>Due Date</th>
                                     <th></th>
@@ -51,7 +52,8 @@
                                     <td class="font-weight-bold">{{ fs.course.name }}</td>
                                     <td>{{ fs.session }}</td>
                                     <td>{{ fs.title }}</td>
-                                    <td class="font-weight-bold text-primary">{{ fs.amount|floatformat:2 }}</td>
+                                    <td><span class="badge {% if fs.currency == 'USD' %}badge-success{% else %}badge-info{% endif %}">{{ fs.currency }}</span></td>
+                                    <td class="font-weight-bold text-primary">{{ fs.currency }} {{ fs.amount|floatformat:2 }}</td>
                                     <td>{{ fs.due_date|date:"M d, Y"|default:"—" }}</td>
                                     <td>
                                         <form method="post" action="{% url 'bursar_delete_fee_structure' fs.id %}" onsubmit="return confirm('Delete this fee structure?')">
@@ -61,7 +63,7 @@
                                     </td>
                                 </tr>
                                 {% empty %}
-                                <tr><td colspan="6" class="text-center py-4 text-muted">No fee structures created yet.</td></tr>
+                                <tr><td colspan="7" class="text-center py-4 text-muted">No fee structures created yet.</td></tr>
                                 {% endfor %}
                             </tbody>
                         </table>

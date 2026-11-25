@@ -724,9 +724,15 @@ class StudentWelfareRecord(models.Model):
 
 
 class FeeStructure(models.Model):
+    CURRENCY_CHOICES = (
+        ("SSP", "SSP (South Sudanese Pounds)"),
+        ("USD", "USD (US Dollar)"),
+    )
+
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="fee_structures")
     session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="fee_structures")
     title = models.CharField(max_length=150, default="Term Tuition & School Fees")
+    currency = models.CharField(max_length=5, choices=CURRENCY_CHOICES, default="SSP")
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     due_date = models.DateField(null=True, blank=True)
     description = models.TextField(blank=True, default="")
@@ -737,7 +743,7 @@ class FeeStructure(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.course.name} - {self.title} ({self.amount})"
+        return f"{self.course.name} - {self.title} ({self.currency} {self.amount})"
 
 
 class FeePayment(models.Model):
@@ -747,11 +753,13 @@ class FeePayment(models.Model):
         ("MOBILE_MONEY", "Mobile Money"),
         ("CHEQUE", "Cheque"),
     )
+    CURRENCY_CHOICES = FeeStructure.CURRENCY_CHOICES
 
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name="fee_payments")
     fee_structure = models.ForeignKey(
         FeeStructure, null=True, blank=True, on_delete=models.SET_NULL, related_name="payments")
     session = models.ForeignKey(Session, null=True, blank=True, on_delete=models.SET_NULL)
+    currency = models.CharField(max_length=5, choices=CURRENCY_CHOICES, default="SSP")
     amount_paid = models.DecimalField(max_digits=12, decimal_places=2)
     payment_date = models.DateField()
     payment_method = models.CharField(max_length=20, choices=PAYMENT_METHODS, default="CASH")
@@ -767,7 +775,7 @@ class FeePayment(models.Model):
         ordering = ["-payment_date", "-created_at"]
 
     def __str__(self):
-        return f"Receipt {self.receipt_number} - {self.student} ({self.amount_paid})"
+        return f"Receipt {self.receipt_number} - {self.student} ({self.currency} {self.amount_paid})"
 
 
 class TeacherPerformanceFeedback(models.Model):

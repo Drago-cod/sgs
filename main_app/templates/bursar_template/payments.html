@@ -108,7 +108,7 @@
                                 <tr>
                                     <td class="font-weight-bold">{{ pay.receipt_number }}</td>
                                     <td>{{ pay.student.admin.get_full_name }}</td>
-                                    <td>{{ pay.amount_paid|floatformat:2 }}</td>
+                                    <td class="font-weight-bold">{{ pay.currency }} {{ pay.amount_paid|floatformat:2 }}</td>
                                     <td>{{ pay.get_payment_method_display }}</td>
                                     <td>{{ pay.payment_date|date:"M d, Y" }}</td>
                                     <td>
@@ -131,8 +131,16 @@
 {% endblock content %}
 
 {% block custom_js %}
+{{ fee_structure_currencies|json_script:"fee-structure-currencies" }}
 <script>
 $(function () {
+    var feeCurrencies = JSON.parse(document.getElementById("fee-structure-currencies").textContent || "{}");
+    $("#id_fee_structure").on("change", function () {
+        var cur = feeCurrencies[$(this).val()];
+        if (cur) {
+            $("#id_currency").val(cur);
+        }
+    });
     $(".js-quick-pay").on("click", function () {
         var studentId = $(this).data("student-id");
         var balance = $(this).data("balance");

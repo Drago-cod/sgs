@@ -104,7 +104,7 @@
                                 <tr>
                                     <td class="font-weight-bold">{{ pay.receipt_number }}</td>
                                     <td>{{ pay.student.admin.get_full_name }}</td>
-                                    <td class="text-success font-weight-bold">{{ pay.amount_paid|floatformat:2 }}</td>
+                                    <td class="text-success font-weight-bold">{{ pay.currency }} {{ pay.amount_paid|floatformat:2 }}</td>
                                     <td><span class="badge badge-secondary">{{ pay.get_payment_method_display }}</span></td>
                                     <td class="text-muted">{{ pay.payment_date|date:"M d, Y" }}</td>
                                     <td>

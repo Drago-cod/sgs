@@ -118,7 +118,10 @@ def bursar_fee_structures(request):
     if request.method == "POST":
         if form.is_valid():
             fs = form.save()
-            messages.success(request, f"Fee structure '{fs.title}' for {fs.course.name} saved.")
+            messages.success(
+                request,
+                f"Fee structure '{fs.title}' ({fs.currency} {fs.amount}) for {fs.course.name} saved.",
+            )
             return redirect("bursar_fee_structures")
         messages.error(request, "Please correct the errors in the fee structure form.")
 
@@ -149,6 +152,8 @@ def bursar_payments(request):
             payment = form.save(commit=False)
             payment.receipt_number = _generate_receipt_number()
             payment.recorded_by = request.user
+            if not payment.currency:
+                payment.currency = payment.fee_structure.currency if payment.fee_structure else "SSP"
             if not payment.session and payment.fee_structure:
                 payment.session = payment.fee_structure.session
             elif not payment.session and payment.student.session:
@@ -165,11 +170,15 @@ def bursar_payments(request):
     payments = FeePayment.objects.select_related(
         "student__admin", "student__course", "fee_structure", "recorded_by"
     )[:50]
+    fee_structure_currencies = {
+        str(fs.id): fs.currency for fs in FeeStructure.objects.only("id", "currency")
+    }
     context = {
         "page_title": "Fee Payments & Student Balances",
         "form": form,
         "ledger": summary["ledger"],
         "payments": payments,
+        "fee_structure_currencies": fee_structure_currencies,
     }
     return render(request, "bursar_template/payments.html", context)
 

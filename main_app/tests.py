@@ -535,6 +535,68 @@ class SixUserRolesTests(TestCase):
             self.assertContains(resp, "JUBA ADVENTIST SECONDARY SCHOOL")
             self.assertContains(resp, "logo.jpeg")
 
+    def test_bursar_fee_structure_usd_and_ssp_currency(self):
+        self.client.force_login(self.bursar)
+
+        # Fee structure page exposes both SSP (South Sudanese Pounds) and USD (US Dollar)
+        page = self.client.get(reverse("bursar_fee_structures"))
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "SSP (South Sudanese Pounds)")
+        self.assertContains(page, "USD (US Dollar)")
+
+        # Accountant adds a USD fee structure and an SSP fee structure
+        resp_usd = self.client.post(
+            reverse("bursar_fee_structures"),
+            {
+                "course": self.course.id,
+                "session": self.session.id,
+                "title": "Term 1 Tuition (USD)",
+                "currency": "USD",
+                "amount": "250.00",
+            },
+        )
+        self.assertEqual(resp_usd.status_code, 302)
+        fs_usd = FeeStructure.objects.get(title="Term 1 Tuition (USD)")
+        self.assertEqual(fs_usd.currency, "USD")
+
+        resp_ssp = self.client.post(
+            reverse("bursar_fee_structures"),
+            {
+                "course": self.course.id,
+                "session": self.session.id,
+                "title": "Lab & Exam Fee (SSP)",
+                "currency": "SSP",
+                "amount": "150000.00",
+            },
+        )
+        self.assertEqual(resp_ssp.status_code, 302)
+        fs_ssp = FeeStructure.objects.get(title="Lab & Exam Fee (SSP)")
+        self.assertEqual(fs_ssp.currency, "SSP")
+
+        # Fee structures table renders both currency codes and amounts
+        list_page = self.client.get(reverse("bursar_fee_structures"))
+        self.assertContains(list_page, "USD 250.00")
+        self.assertContains(list_page, "SSP 150000.00")
+
+        # Payment linked to USD structure inherits USD when currency omitted, and renders on receipt
+        pay_resp = self.client.post(
+            reverse("bursar_payments"),
+            {
+                "student": self.student.id,
+                "fee_structure": fs_usd.id,
+                "amount_paid": "250.00",
+                "payment_date": "2026-11-25",
+                "payment_method": "CASH",
+            },
+        )
+        self.assertEqual(pay_resp.status_code, 302)
+        payment = FeePayment.objects.get(fee_structure=fs_usd, student=self.student)
+        self.assertEqual(payment.currency, "USD")
+
+        receipt_resp = self.client.get(reverse("bursar_receipt", args=[payment.id]))
+        self.assertEqual(receipt_resp.status_code, 200)
+        self.assertContains(receipt_resp, "USD 250.00")
+
     def test_notification_center_and_quick_responses_across_roles(self):
         # Student sends feedback and a message to Class Teacher
         fb = FeedbackStudent.objects.create(

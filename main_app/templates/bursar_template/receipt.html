@@ -51,16 +51,16 @@
                     </tr>
                     <tr class="table-success">
                         <th>Amount Paid</th>
-                        <td class="font-weight-bold" style="font-size:1.15rem;">{{ payment.amount_paid|floatformat:2 }}</td>
+                        <td class="font-weight-bold" style="font-size:1.15rem;">{{ payment.currency }} {{ payment.amount_paid|floatformat:2 }}</td>
                     </tr>
                     <tr>
                         <th>Total Expected / Total Paid</th>
-                        <td>{{ expected|floatformat:2 }} / {{ total_paid|floatformat:2 }}</td>
+                        <td>{{ payment.currency }} {{ expected|floatformat:2 }} / {{ payment.currency }} {{ total_paid|floatformat:2 }}</td>
                     </tr>
                     <tr>
                         <th>Balance Remaining</th>
                         <td class="{% if balance_remaining > 0 %}text-danger font-weight-bold{% else %}text-success font-weight-bold{% endif %}">
-                            {{ balance_remaining|floatformat:2 }}
+                            {{ payment.currency }} {{ balance_remaining|floatformat:2 }}
                         </td>
                     </tr>
                     {% if payment.notes %}
