@@ -44,7 +44,7 @@
                     <img src="{% static 'dist/img/avatar5.png' %}" alt="Avatar" class="img-circle elevation-1" style="width:42px;height:42px;object-fit:cover;" />
                     {% endif %}
                   </td>
-                  <td class="font-weight-bold">{{staff.admin.last_name}}, {{staff.admin.first_name}}</td>
+                  <td class="font-weight-bold">{{ staff.admin.get_full_name }}</td>
                   <td>{{staff.admin.email}}</td>
                   <td>
                     {% if staff.class_teacher %}

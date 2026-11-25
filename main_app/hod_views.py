@@ -132,6 +132,7 @@ def add_staff(request):
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
+            third_name = (form.cleaned_data.get('third_name') or '').strip()
             address = form.cleaned_data.get('address')
             email = form.cleaned_data.get('email')
             gender = form.cleaned_data.get('gender')
@@ -155,6 +156,7 @@ def add_staff(request):
                     user_type=role,
                     first_name=first_name,
                     last_name=last_name,
+                    third_name=third_name,
                     gender=gender,
                     address=address,
                 )
@@ -210,6 +212,7 @@ def add_student(request):
                     user_type='3',
                     first_name=student_form.cleaned_data.get('first_name'),
                     last_name=student_form.cleaned_data.get('last_name'),
+                    third_name=(student_form.cleaned_data.get('third_name') or '').strip(),
                     gender=student_form.cleaned_data.get('gender'),
                     address=student_form.cleaned_data.get('address')
                 )
@@ -292,7 +295,9 @@ def add_subject(request):
 
 
 def manage_staff(request):
-    allStaff = Staff.objects.all()
+    allStaff = Staff.objects.select_related('admin', 'course').order_by(
+        'admin__first_name', 'admin__last_name', 'admin__third_name'
+    )
     context = {
         'allStaff': allStaff,
         'page_title': 'Manage Staff'
@@ -305,7 +310,7 @@ def print_staff_list(request):
         return HttpResponse("Forbidden", status=403)
 
     all_staff = Staff.objects.select_related('admin', 'course').order_by(
-        'admin__last_name', 'admin__first_name')
+        'admin__first_name', 'admin__last_name', 'admin__third_name')
     return render(request, "hod_template/print_staff_list.html", {
         'all_staff': all_staff,
         'page_title': 'Staff List',
@@ -313,7 +318,9 @@ def print_staff_list(request):
 
 
 def manage_student(request):
-    students = CustomUser.objects.filter(user_type=3)
+    students = CustomUser.objects.filter(user_type=3).order_by(
+        'first_name', 'last_name', 'third_name'
+    )
     context = {
         'students': students,
         'page_title': 'Manage Students'
@@ -327,7 +334,7 @@ def print_student_list(request):
 
     students = Student.objects.select_related(
         'admin', 'course', 'session'
-    ).order_by('admin__last_name', 'admin__first_name')
+    ).order_by('admin__first_name', 'admin__last_name', 'admin__third_name')
     return render(request, "hod_template/print_student_list.html", {
         'students': students,
         'page_title': 'Registered Student List',
@@ -364,6 +371,7 @@ def edit_staff(request, staff_id):
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
+            third_name = (form.cleaned_data.get('third_name') or '').strip()
             address = form.cleaned_data.get('address')
             username = form.cleaned_data.get('username')
             email = form.cleaned_data.get('email')
@@ -384,6 +392,7 @@ def edit_staff(request, staff_id):
                     user.profile_pic = passport_url
                 user.first_name = first_name
                 user.last_name = last_name
+                user.third_name = third_name
                 user.gender = gender
                 user.address = address
                 staff.course = course
@@ -413,6 +422,7 @@ def edit_student(request, student_id):
         if form.is_valid():
             first_name = form.cleaned_data.get('first_name')
             last_name = form.cleaned_data.get('last_name')
+            third_name = (form.cleaned_data.get('third_name') or '').strip()
             address = form.cleaned_data.get('address')
             username = form.cleaned_data.get('username')
             email = form.cleaned_data.get('email')
@@ -434,6 +444,7 @@ def edit_student(request, student_id):
                     user.set_password(password)
                 user.first_name = first_name
                 user.last_name = last_name
+                user.third_name = third_name
                 student.session = session
                 student.course = course
                 user.gender = gender
@@ -786,6 +797,7 @@ def admin_view_profile(request):
             if form.is_valid():
                 first_name = form.cleaned_data.get('first_name')
                 last_name = form.cleaned_data.get('last_name')
+                third_name = (form.cleaned_data.get('third_name') or '').strip()
                 password = form.cleaned_data.get('password') or None
                 passport = request.FILES.get('profile_pic') or None
                 custom_user = admin.admin
@@ -795,6 +807,7 @@ def admin_view_profile(request):
                     custom_user.profile_pic = passport
                 custom_user.first_name = first_name
                 custom_user.last_name = last_name
+                custom_user.third_name = third_name
                 custom_user.save()
                 messages.success(request, "Profile Updated!")
                 return redirect(reverse('admin_view_profile'))
@@ -945,7 +958,9 @@ def admin_ai_attendance_dashboard(request):
         notifications_qs = notifications_qs.filter(is_resolved=False)
 
     summary = get_ai_dashboard_summary(reference_date=ref_date)
-    all_staff = Staff.objects.select_related('admin', 'course').order_by('admin__last_name')
+    all_staff = Staff.objects.select_related('admin', 'course').order_by(
+        'admin__first_name', 'admin__last_name', 'admin__third_name'
+    )
     today_teacher_records = {
         rec.staff_id: rec
         for rec in TeacherAttendance.objects.filter(date=ref_date)
@@ -1135,7 +1150,7 @@ def manage_user_roles(request):
         return redirect('manage_user_roles')
 
     role_filter = request.GET.get('role', 'ALL')
-    users_qs = CustomUser.objects.all().order_by('user_type', 'last_name', 'first_name')
+    users_qs = CustomUser.objects.all().order_by('user_type', 'first_name', 'last_name', 'third_name')
     if role_filter in {c[0] for c in CustomUser.USER_TYPE}:
         users_qs = users_qs.filter(user_type=role_filter)
 
@@ -1190,7 +1205,9 @@ def teacher_performance_feedback(request):
 
     # Build live performance metrics per teacher
     teacher_metrics = []
-    for staff in Staff.objects.select_related('admin', 'course').order_by('admin__last_name'):
+    for staff in Staff.objects.select_related('admin', 'course').order_by(
+        'admin__first_name', 'admin__last_name', 'admin__third_name'
+    ):
         ai_profile = analyze_teacher_attendance(staff, create_alerts=False)
         subject_results = list(StudentResult.objects.filter(subject__staff=staff))
         avg_student_score = (

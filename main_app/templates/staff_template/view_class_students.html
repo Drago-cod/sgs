@@ -39,7 +39,7 @@
                                 {% for student in students %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ student.admin.last_name }}, {{ student.admin.first_name }}</td>
+                                    <td>{{ student.admin.get_full_name }}</td>
                                     <td>{{ student.phone_number|default:"N/A" }}</td>
                                     <td>
                                         <button class="btn btn-success btn-sm send-sms" data-student-id="{{ student.id }}">

@@ -68,6 +68,7 @@ class CustomUser(AbstractUser):
     
     username = None  # Removed username, using email instead
     email = models.EmailField(unique=True)
+    third_name = models.CharField(max_length=150, blank=True, default="")
     user_type = models.CharField(default="1", choices=USER_TYPE, max_length=1)
     gender = models.CharField(max_length=1, choices=GENDER)
     profile_pic = models.ImageField(upload_to='profile_pics/', blank=True, default='')
@@ -79,8 +80,17 @@ class CustomUser(AbstractUser):
     REQUIRED_FIELDS = []
     objects = CustomUserManager()
 
+    def get_full_name(self):
+        """Return names strictly in First, Second, Third order."""
+        parts = [
+            (self.first_name or "").strip(),
+            (self.last_name or "").strip(),
+            (self.third_name or "").strip(),
+        ]
+        return " ".join(p for p in parts if p)
+
     def __str__(self):
-        return self.last_name + ", " + self.first_name
+        return self.get_full_name() or self.email
 
 
 class Admin(models.Model):
@@ -124,7 +134,7 @@ class Student(models.Model):
     phone_number = models.CharField(max_length=15, blank=True, null=True)
 
     def __str__(self):
-        return self.admin.last_name + ", " + self.admin.first_name
+        return self.admin.get_full_name() or self.admin.email
 
 
 class Staff(models.Model):
@@ -135,7 +145,7 @@ class Staff(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.admin.last_name + " " + self.admin.first_name
+        return self.admin.get_full_name() or self.admin.email
 
 
 class Subject(models.Model):
@@ -398,7 +408,7 @@ class AttendanceAnomaly(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-date", "student__admin__last_name", "flagged_period"]
+        ordering = ["-date", "student__admin__first_name", "student__admin__last_name", "student__admin__third_name", "flagged_period"]
         constraints = [
             models.UniqueConstraint(
                 fields=["student", "date", "flagged_period"],
@@ -451,7 +461,7 @@ class TeacherAttendance(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["-date", "staff__admin__last_name"]
+        ordering = ["-date", "staff__admin__first_name", "staff__admin__last_name", "staff__admin__third_name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["staff", "date"],
@@ -1191,7 +1201,7 @@ class VirtualAttendanceRecord(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ["student__admin__last_name", "student__admin__first_name"]
+        ordering = ["student__admin__first_name", "student__admin__last_name", "student__admin__third_name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["classroom", "student"],

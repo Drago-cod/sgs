@@ -2073,6 +2073,7 @@ def manage_parent_links(request):
             email = request.POST.get("email", "").strip().lower()
             first_name = request.POST.get("first_name", "").strip()
             last_name = request.POST.get("last_name", "").strip()
+            third_name = request.POST.get("third_name", "").strip()
             password = request.POST.get("password", "").strip() or "123try"
             phone = request.POST.get("phone_number", "").strip()
             student_ids = request.POST.getlist("student_ids")
@@ -2082,6 +2083,7 @@ def manage_parent_links(request):
                     password=password,
                     first_name=first_name or "Parent",
                     last_name=last_name or "Guardian",
+                    third_name=third_name,
                     gender="M",
                     address="Juba",
                     user_type="7",

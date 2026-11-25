@@ -114,7 +114,7 @@
                                 {% for student in students %}
                                 <tr>
                                     <td class="text-muted">{{ forloop.counter }}</td>
-                                    <td class="font-weight-bold">{{ student.admin.last_name }}, {{ student.admin.first_name }}</td>
+                                    <td class="font-weight-bold">{{ student.admin.get_full_name }}</td>
                                     <td class="text-secondary">{{ student.admin.email }}</td>
                                     <td>{{ student.phone_number|default:"N/A" }}</td>
                                     <td><span class="badge badge-secondary">{{ student.admin.gender|default:"—" }}</span></td>

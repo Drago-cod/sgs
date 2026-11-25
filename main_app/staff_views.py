@@ -65,7 +65,7 @@ def staff_home(request):
         staff=staff, date=timezone.localdate()
     ).first()
     context = {
-        'page_title': 'Staff Panel - ' + str(staff.admin.last_name) + ' (' + str(staff.course) + ')',
+        'page_title': f'Staff Panel - {staff.admin.get_full_name()} ({staff.course})',
         'total_students': total_students,
         'total_attendance': total_attendance,
         'total_leave': total_leave,
@@ -98,12 +98,13 @@ def get_students(request):
         subject = get_object_or_404(Subject, id=subject_id)
         session = get_object_or_404(Session, id=session_id)
         students = Student.objects.filter(
-            course_id=subject.course.id, session=session)
+            course_id=subject.course.id, session=session
+        ).select_related('admin').order_by('admin__first_name', 'admin__last_name', 'admin__third_name')
         student_data = []
         for student in students:
             data = {
                     "id": student.id,
-                    "name": student.admin.last_name + " " + student.admin.first_name
+                    "name": student.admin.get_full_name()
                     }
             student_data.append(data)
         return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
@@ -184,11 +185,13 @@ def get_student_attendance(request):
     attendance_date_id = request.POST.get('attendance_date_id')
     try:
         date = get_object_or_404(Attendance, id=attendance_date_id)
-        attendance_data = AttendanceReport.objects.filter(attendance=date)
+        attendance_data = AttendanceReport.objects.filter(attendance=date).select_related('student__admin').order_by(
+            'student__admin__first_name', 'student__admin__last_name', 'student__admin__third_name'
+        )
         student_data = []
         for attendance in attendance_data:
             data = {"id": attendance.student.admin.id,
-                    "name": attendance.student.admin.last_name + " " + attendance.student.admin.first_name,
+                    "name": attendance.student.admin.get_full_name(),
                     "status": attendance.attendance_status}
             student_data.append(data)
         return JsonResponse(json.dumps(student_data), content_type='application/json', safe=False)
@@ -311,6 +314,7 @@ def staff_view_profile(request):
             if form.is_valid():
                 first_name = form.cleaned_data.get('first_name')
                 last_name = form.cleaned_data.get('last_name')
+                third_name = (form.cleaned_data.get('third_name') or '').strip()
                 password = form.cleaned_data.get('password') or None
                 address = form.cleaned_data.get('address')
                 gender = form.cleaned_data.get('gender')
@@ -322,6 +326,7 @@ def staff_view_profile(request):
                     admin.profile_pic = passport
                 admin.first_name = first_name
                 admin.last_name = last_name
+                admin.third_name = third_name
                 admin.address = address
                 admin.gender = gender
                 admin.save()
@@ -568,12 +573,14 @@ def class_teacher_dashboard(request):
         return redirect('staff_home')
 
     course = staff.course
-    students = Student.objects.filter(course=course)
+    students = Student.objects.filter(course=course).select_related('admin').order_by(
+        'admin__first_name', 'admin__last_name', 'admin__third_name'
+    )
     total_students = students.count()
     total_subjects = Subject.objects.filter(course=course).count()
     
     context = {
-        'page_title': f'Class Teacher Dashboard - {staff.admin.last_name}',
+        'page_title': f'Class Teacher Dashboard - {staff.admin.get_full_name()}',
         'total_students': total_students,
         'total_subjects': total_subjects,
         'students': students,
@@ -587,7 +594,9 @@ def view_class_students(request):
         messages.error(request, "You are not authorized to access this page")
         return redirect('staff_home')
 
-    students = Student.objects.filter(course=staff.course)
+    students = Student.objects.filter(course=staff.course).select_related('admin').order_by(
+        'admin__first_name', 'admin__last_name', 'admin__third_name'
+    )
     context = {
         'students': students,
         'page_title': 'Class Students'
@@ -605,7 +614,7 @@ def print_subject_student_lists(request):
             'students': Student.objects.filter(
                 course=subject.course
             ).select_related('admin').order_by(
-                'admin__last_name', 'admin__first_name'),
+                'admin__first_name', 'admin__last_name', 'admin__third_name'),
         }
         for subject in subjects
     ]
@@ -1169,7 +1178,9 @@ def staff_assignment_submissions(request, assignment_id):
                 messages.info(request, f"Returned {sub.student.admin.get_full_name()}'s assignment for revision.")
             return redirect("staff_assignment_submissions", assignment_id=assignment.id)
 
-    students = Student.objects.filter(course=assignment.subject.course).select_related("admin").order_by("admin__last_name")
+    students = Student.objects.filter(course=assignment.subject.course).select_related("admin").order_by(
+        "admin__first_name", "admin__last_name", "admin__third_name"
+    )
     subs_by_student = {
         s.student_id: s
         for s in AssignmentSubmission.objects.filter(assignment=assignment).prefetch_related("private_comments__author")

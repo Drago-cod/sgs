@@ -43,7 +43,7 @@
                                         <img src="{% static 'dist/img/avatar5.png' %}" alt="Avatar" class="img-circle elevation-1" style="width:42px;height:42px;object-fit:cover;">
                                         {% endif %}
                                     </td>
-                                    <td class="font-weight-bold">{{student.last_name}}, {{student.first_name}}</td>
+                                    <td class="font-weight-bold">{{ student.get_full_name }}</td>
                                     <td>{{student.email}}</td>
                                     <td>{{student.gender|default:"—"}}</td>
                                     <td>{{student.student.course.name|default:"—"}}</td>

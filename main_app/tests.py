@@ -597,6 +597,65 @@ class SixUserRolesTests(TestCase):
         self.assertEqual(receipt_resp.status_code, 200)
         self.assertContains(receipt_resp, "USD 250.00")
 
+    def test_first_second_third_name_order_preserved_across_system(self):
+        self.client.force_login(self.principal)
+
+        # Add Student form shows First Name, Second Name, Third Name in order
+        add_stu_page = self.client.get(reverse("add_student"))
+        self.assertEqual(add_stu_page.status_code, 200)
+        html = add_stu_page.content.decode("utf-8")
+        self.assertLess(html.index("First Name"), html.index("Second Name"))
+        self.assertLess(html.index("Second Name"), html.index("Third Name"))
+
+        # Create a 3-part student name: First="John", Second="Deng", Third="Garang"
+        resp = self.client.post(
+            reverse("add_student"),
+            {
+                "first_name": "John",
+                "last_name": "Deng",
+                "third_name": "Garang",
+                "email": "john.deng.garang@test.com",
+                "gender": "M",
+                "password": "password123",
+                "address": "Juba",
+                "course": self.course.id,
+                "session": self.session.id,
+                "phone_number": "+211900001234",
+            },
+        )
+        self.assertEqual(resp.status_code, 302)
+        stu = Student.objects.get(admin__email="john.deng.garang@test.com")
+        self.assertEqual(stu.admin.get_full_name(), "John Deng Garang")
+        self.assertEqual(str(stu.admin), "John Deng Garang")
+        self.assertEqual(str(stu), "John Deng Garang")
+
+        # Manage Students page displays First Second Third (never reversed with comma)
+        manage_stu = self.client.get(reverse("manage_student"))
+        self.assertContains(manage_stu, "John Deng Garang")
+        self.assertNotContains(manage_stu, "Deng, John")
+
+        # Create a 3-part staff name and verify Manage Staff + Staff.__str__
+        staff_resp = self.client.post(
+            reverse("add_staff"),
+            {
+                "first_name": "Mary",
+                "last_name": "Akech",
+                "third_name": "Mabior",
+                "email": "mary.akech@test.com",
+                "gender": "F",
+                "password": "password123",
+                "address": "Juba",
+                "role": "2",
+                "course": self.course.id,
+            },
+        )
+        self.assertEqual(staff_resp.status_code, 302)
+        teacher = Staff.objects.get(admin__email="mary.akech@test.com")
+        self.assertEqual(str(teacher), "Mary Akech Mabior")
+        manage_staff = self.client.get(reverse("manage_staff"))
+        self.assertContains(manage_staff, "Mary Akech Mabior")
+        self.assertNotContains(manage_staff, "Akech, Mary")
+
     def test_notification_center_and_quick_responses_across_roles(self):
         # Student sends feedback and a message to Class Teacher
         fb = FeedbackStudent.objects.create(

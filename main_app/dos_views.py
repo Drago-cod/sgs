@@ -180,7 +180,13 @@ def dos_academic_results(request):
 
     results_qs = StudentResult.objects.select_related(
         "student__admin", "student__course", "subject", "subject__staff__admin"
-    ).order_by("student__course__name", "student__admin__last_name", "subject__name")
+    ).order_by(
+        "student__course__name",
+        "student__admin__first_name",
+        "student__admin__last_name",
+        "student__admin__third_name",
+        "subject__name",
+    )
 
     if course_id:
         results_qs = results_qs.filter(student__course_id=course_id)
@@ -281,6 +287,7 @@ def dos_view_profile(request):
                 custom_user.profile_pic = passport
             custom_user.first_name = form.cleaned_data.get("first_name")
             custom_user.last_name = form.cleaned_data.get("last_name")
+            custom_user.third_name = (form.cleaned_data.get("third_name") or "").strip()
             custom_user.address = form.cleaned_data.get("address")
             custom_user.gender = form.cleaned_data.get("gender")
             custom_user.save()

@@ -37,7 +37,7 @@ def _compute_student_fee_ledger():
     total_collected = Decimal("0.00")
 
     for student in Student.objects.select_related("admin", "course", "session").order_by(
-        "course__name", "admin__last_name"
+        "course__name", "admin__first_name", "admin__last_name", "admin__third_name"
     ):
         expected = structures_by_course.get(student.course_id, Decimal("0.00"))
         paid = payments_by_student.get(student.id, Decimal("0.00"))
@@ -278,6 +278,7 @@ def bursar_view_profile(request):
                 custom_user.profile_pic = passport
             custom_user.first_name = form.cleaned_data.get("first_name")
             custom_user.last_name = form.cleaned_data.get("last_name")
+            custom_user.third_name = (form.cleaned_data.get("third_name") or "").strip()
             custom_user.address = form.cleaned_data.get("address")
             custom_user.gender = form.cleaned_data.get("gender")
             custom_user.save()
