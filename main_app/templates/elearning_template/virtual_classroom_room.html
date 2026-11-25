@@ -70,7 +70,11 @@
           <span class="badge {% if classroom.status == 'LIVE' %}badge-danger{% elif classroom.status == 'ENDED' %}badge-success{% else %}badge-info{% endif %}">
             <i class="fas fa-broadcast-tower mr-1"></i> {{ classroom.get_status_display }}
           </span>
+          {% if classroom.is_staff_meeting %}
+          <span class="badge badge-primary"><i class="fas fa-user-tie mr-1"></i>Staff Meeting</span>
+          {% else %}
           <strong>{{ classroom.subject.name }} ({{ classroom.course.name }})</strong>
+          {% endif %}
           <span class="small text-muted"><i class="far fa-clock mr-1"></i><span id="vcTimer">00:00</span></span>
           <span class="badge badge-success" id="vcConnBadge"><i class="fas fa-wifi mr-1"></i>Connected</span>
           <span id="vcRecIndicator" class="badge badge-danger d-none"><span class="vc-rec-dot mr-1"></span>REC <span id="vcRecTime">00:00</span></span>
@@ -92,14 +96,16 @@
             <i class="fas fa-pen mr-1"></i>
             <span id="wbPermLabel">{% if classroom.allow_student_whiteboard %}Students Can Draw{% else %}Teacher-Only Board{% endif %}</span>
           </button>
+          {% if not classroom.is_staff_meeting %}
           <button type="button" id="btnStartRec" class="btn btn-info btn-xs"><i class="fas fa-record-vinyl mr-1"></i>Record Lesson</button>
           <button type="button" id="btnPauseRec" class="btn btn-secondary btn-xs d-none"><i class="fas fa-pause mr-1"></i>Pause</button>
           <button type="button" id="btnStopRec" class="btn btn-danger btn-xs d-none"><i class="fas fa-stop mr-1"></i>Stop &amp; Save</button>
           <a href="{% url 'elearning_classroom_attendance' classroom.id %}" target="_blank" class="btn btn-secondary btn-xs"><i class="fas fa-clipboard-check mr-1"></i>Attendance</a>
-          <form method="post" action="{% url 'elearning_classroom_control' classroom.id %}" class="d-inline" onsubmit="return confirm('End this lesson and synchronize attendance to SGS?')">
+          {% endif %}
+          <form method="post" action="{% url 'elearning_classroom_control' classroom.id %}" class="d-inline" onsubmit="return confirm('{% if classroom.is_staff_meeting %}End this staff meeting now?{% else %}End this lesson and synchronize attendance to SGS?{% endif %}')">
             {% csrf_token %}
             <input type="hidden" name="action" value="end">
-            <button type="submit" class="btn btn-danger btn-xs"><i class="fas fa-phone-slash mr-1"></i>End &amp; Sync</button>
+            <button type="submit" class="btn btn-danger btn-xs"><i class="fas fa-phone-slash mr-1"></i>{% if classroom.is_staff_meeting %}End Meeting{% else %}End &amp; Sync{% endif %}</button>
           </form>
           {% else %}
           <a href="{% url 'elearning_classrooms' %}" id="btnExitClass" class="btn btn-danger btn-xs"><i class="fas fa-sign-out-alt mr-1"></i>Exit Class</a>
@@ -150,7 +156,7 @@
                 </div>
                 <div class="d-flex flex-wrap justify-content-between align-items-center px-2 pt-2 small text-muted">
                   <span><i class="fas fa-lock text-success mr-1"></i> Encrypted WebRTC Room: <code>{{ classroom.room_code }}</code> (Camera optional for attendance)</span>
-                  <span>Host: <strong>{{ classroom.teacher.admin.get_full_name }}</strong></span>
+                  <span>Host: <strong>{{ classroom.host_display_name }}</strong></span>
                 </div>
               </div>
 

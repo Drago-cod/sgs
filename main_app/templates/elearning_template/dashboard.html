@@ -507,16 +507,19 @@
                 {% for vc in recent_classrooms %}
                 <tr>
                   <td class="font-weight-bold">{{ vc.title }}</td>
-                  <td>{{ vc.course.name }} &middot; {{ vc.subject.name }}</td>
-                  <td>{{ vc.teacher.admin.get_full_name }}</td>
+                  <td>{% if vc.is_staff_meeting %}<span class="badge badge-primary">Staff Meeting</span>{% else %}{{ vc.course.name|default:"—" }} &middot; {{ vc.subject.name|default:"—" }}{% endif %}</td>
+                  <td>{{ vc.host_display_name }}</td>
                   <td>
                     <span class="badge {% if vc.status == 'LIVE' %}badge-danger{% elif vc.status == 'SCHEDULED' %}badge-info{% elif vc.status == 'ENDED' %}badge-success{% else %}badge-secondary{% endif %}">
                       {{ vc.get_status_display }}
                     </span>
                   </td>
                   <td>
-                    <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-xs btn-secondary">Observe</a>
-                    <a href="{% url 'elearning_classroom_attendance' vc.id %}" class="btn btn-xs btn-primary">Attendance</a>
+                    {% if vc.is_staff_meeting %}
+                    <a href="{% url 'elearning_classroom_room' vc.id %}" class="btn btn-xs btn-info"><i class="fas fa-video mr-1"></i>Join Staff Meeting</a>
+                    {% else %}
+                    <a href="{% url 'elearning_classroom_attendance' vc.id %}" class="btn btn-xs btn-primary"><i class="fas fa-clipboard-check mr-1"></i>Attendance</a>
+                    {% endif %}
                   </td>
                 </tr>
                 {% empty %}

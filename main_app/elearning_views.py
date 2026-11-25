@@ -26,6 +26,7 @@ from .elearning_forms import (
     LearningTopicForm,
     LectureRecordingForm,
     OnlineAssessmentForm,
+    StaffMeetingForm,
     SubjectAnnouncementForm,
     VirtualClassroomForm,
 )
@@ -40,10 +41,12 @@ from .elearning_services import (
     get_authorized_subjects,
     get_user_role,
     is_admin_or_dos,
+    is_classroom_host,
     is_parent,
     is_student,
     is_teacher,
     notify_course_students,
+    notify_staff_members,
     record_student_heartbeat,
     record_student_join,
     record_student_leave,
@@ -122,11 +125,11 @@ def elearning_dashboard(request):
         progress_data = compute_student_learning_progress(student)
 
         live_classes = VirtualClassroom.objects.filter(
-            course=course, status="LIVE"
+            audience="STUDENTS", course=course, status="LIVE"
         ).select_related("subject", "teacher__admin") if course else VirtualClassroom.objects.none()
 
         upcoming_classes = VirtualClassroom.objects.filter(
-            course=course, status="SCHEDULED", scheduled_start__gte=now - timedelta(hours=1)
+            audience="STUDENTS", course=course, status="SCHEDULED", scheduled_start__gte=now - timedelta(hours=1)
         ).select_related("subject", "teacher__admin").order_by("scheduled_start")[:8] if course else []
 
         recent_materials = LearningMaterial.objects.filter(
@@ -565,131 +568,233 @@ def open_learning_material(request, material_id):
 def virtual_classrooms_list(request):
     user = request.user
     subjects = get_authorized_subjects(user)
-    can_create = is_teacher(user) or is_admin_or_dos(user)
+    is_admin_role = is_admin_or_dos(user)
+    is_teacher_role = is_teacher(user)
+    can_create_student_class = is_teacher_role
+    can_create_staff_meeting = is_admin_role
 
-    if request.method == "POST" and can_create:
-        action = request.POST.get("action", "schedule")
+    if request.method == "POST":
+        action = request.POST.get("action", "")
 
-        if action == "instant":
-            subj = get_object_or_404(Subject, id=request.POST.get("subject_id"))
-            if not can_manage_subject(user, subj):
-                messages.error(request, "You can only start instant classes for your assigned subjects.")
+        # --- ADMIN / DOS: STAFF VIRTUAL MEETINGS ONLY ---
+        if action in ("instant_staff", "schedule_staff"):
+            if not can_create_staff_meeting:
+                messages.error(request, "Only Principal/Admin or DOS can host staff virtual meetings.")
                 return redirect("elearning_classrooms")
-            title = request.POST.get("title", "").strip() or f"Instant Live Lesson — {subj.name}"
-            classroom = VirtualClassroom.objects.create(
-                title=title,
-                subject=subj,
-                course=subj.course,
-                session=Session.objects.order_by("-id").first(),
-                teacher=_get_staff_profile(user) or subj.staff,
-                academic_year=str(timezone.localdate().year),
-                scheduled_start=timezone.now(),
-                started_at=timezone.now(),
-                duration_minutes=int(request.POST.get("duration_minutes") or 45),
-                is_instant=True,
-                status="LIVE",
-            )
-            notify_course_students(
-                subj.course,
-                f"LIVE NOW: {classroom.title} ({subj.name}) has started. Join in eLearning -> Virtual Classrooms!",
-            )
-            messages.success(request, f"Instant virtual classroom '{classroom.title}' is now LIVE!")
-            return redirect("elearning_classroom_room", classroom_id=classroom.id)
 
-        form = VirtualClassroomForm(request.POST, request.FILES, subjects_qs=subjects)
-        if form.is_valid():
-            classroom = form.save(commit=False)
-            classroom.course = classroom.subject.course
-            classroom.teacher = _get_staff_profile(user) or classroom.subject.staff
-            classroom.status = "SCHEDULED"
-            classroom.save()
-
-            # Optional recurring copies (next 3 occurrences)
-            if classroom.recurrence != "NONE":
-                step_days = 1 if classroom.recurrence == "DAILY" else (7 if classroom.recurrence == "WEEKLY" else 14)
-                for idx in range(1, 4):
-                    VirtualClassroom.objects.create(
-                        title=f"{classroom.title} (Part {idx + 1})",
-                        subject=classroom.subject,
-                        course=classroom.course,
-                        session=classroom.session,
-                        topic=classroom.topic,
-                        teacher=classroom.teacher,
-                        academic_year=classroom.academic_year,
-                        stream=classroom.stream,
-                        description=classroom.description,
-                        learning_objectives=classroom.learning_objectives,
-                        scheduled_start=classroom.scheduled_start + timedelta(days=step_days * idx),
-                        duration_minutes=classroom.duration_minutes,
-                        recurrence=classroom.recurrence,
-                        status="SCHEDULED",
-                        waiting_room_enabled=classroom.waiting_room_enabled,
-                        mute_on_entry=classroom.mute_on_entry,
-                        allow_student_chat=classroom.allow_student_chat,
-                        allow_student_whiteboard=classroom.allow_student_whiteboard,
-                        attendance_threshold_percent=classroom.attendance_threshold_percent,
-                        late_grace_minutes=classroom.late_grace_minutes,
+            if action == "instant_staff":
+                title = request.POST.get("title", "").strip() or "Instant Staff Virtual Meeting"
+                meeting = VirtualClassroom.objects.create(
+                    audience="STAFF",
+                    title=title,
+                    host_user=user,
+                    session=Session.objects.order_by("-id").first(),
+                    academic_year=str(timezone.localdate().year),
+                    scheduled_start=timezone.now(),
+                    started_at=timezone.now(),
+                    duration_minutes=int(request.POST.get("duration_minutes") or 45),
+                    description=request.POST.get("description", "").strip(),
+                    is_instant=True,
+                    status="LIVE",
+                )
+                staff_ids = request.POST.getlist("invited_staff")
+                if staff_ids:
+                    invited_qs = Staff.objects.filter(id__in=staff_ids)
+                    meeting.invited_staff.set(invited_qs)
+                    notify_staff_members(
+                        f"LIVE STAFF MEETING: {meeting.title} hosted by {meeting.host_display_name}. Join in Virtual Meetings!",
+                        staff_qs=invited_qs,
                     )
+                else:
+                    notify_staff_members(
+                        f"LIVE STAFF MEETING: {meeting.title} hosted by {meeting.host_display_name}. Join in Virtual Meetings!"
+                    )
+                messages.success(request, f"Instant staff meeting '{meeting.title}' is now LIVE & staff notified!")
+                return redirect("elearning_classroom_room", classroom_id=meeting.id)
 
-            notify_course_students(
-                classroom.course,
-                f"Scheduled Online Class: {classroom.title} ({classroom.subject.name}) on {classroom.scheduled_start:%b %d, %H:%M}.",
-            )
-            messages.success(request, f"Virtual classroom '{classroom.title}' scheduled & students notified.")
-            return redirect("elearning_classrooms")
-        else:
-            messages.error(request, f"Please correct the form: {form.errors.as_text()}")
+            staff_form = StaffMeetingForm(request.POST, request.FILES)
+            if staff_form.is_valid():
+                meeting = staff_form.save(commit=False)
+                meeting.audience = "STAFF"
+                meeting.host_user = user
+                meeting.status = "SCHEDULED"
+                meeting.save()
+                invited_qs = staff_form.cleaned_data.get("invited_staff")
+                if invited_qs and invited_qs.exists():
+                    meeting.invited_staff.set(invited_qs)
+                    notify_staff_members(
+                        f"Scheduled Staff Meeting: {meeting.title} on {meeting.scheduled_start:%b %d, %H:%M} (Host: {meeting.host_display_name}).",
+                        staff_qs=invited_qs,
+                    )
+                else:
+                    notify_staff_members(
+                        f"Scheduled Staff Meeting: {meeting.title} on {meeting.scheduled_start:%b %d, %H:%M} (Host: {meeting.host_display_name})."
+                    )
+                messages.success(request, f"Staff virtual meeting '{meeting.title}' scheduled & staff notified.")
+                return redirect("elearning_classrooms")
+            else:
+                messages.error(request, f"Please correct the meeting form: {staff_form.errors.as_text()}")
+                return redirect("elearning_classrooms")
+
+        # --- TEACHERS ONLY: STUDENT VIRTUAL CLASSES ---
+        if action in ("instant", "schedule"):
+            if not can_create_student_class:
+                messages.error(
+                    request,
+                    "Administrators cannot create or conduct virtual classes with students. Only teachers conduct student virtual classes; use Staff Meetings to meet with staff.",
+                )
+                return redirect("elearning_classrooms")
+
+            if action == "instant":
+                subj = get_object_or_404(Subject, id=request.POST.get("subject_id"))
+                if not can_manage_subject(user, subj):
+                    messages.error(request, "You can only start instant classes for your assigned subjects.")
+                    return redirect("elearning_classrooms")
+                title = request.POST.get("title", "").strip() or f"Instant Live Lesson — {subj.name}"
+                classroom = VirtualClassroom.objects.create(
+                    audience="STUDENTS",
+                    title=title,
+                    host_user=user,
+                    subject=subj,
+                    course=subj.course,
+                    session=Session.objects.order_by("-id").first(),
+                    teacher=_get_staff_profile(user) or subj.staff,
+                    academic_year=str(timezone.localdate().year),
+                    scheduled_start=timezone.now(),
+                    started_at=timezone.now(),
+                    duration_minutes=int(request.POST.get("duration_minutes") or 45),
+                    is_instant=True,
+                    status="LIVE",
+                )
+                notify_course_students(
+                    subj.course,
+                    f"LIVE NOW: {classroom.title} ({subj.name}) has started. Join in eLearning -> Virtual Classrooms!",
+                )
+                messages.success(request, f"Instant virtual classroom '{classroom.title}' is now LIVE!")
+                return redirect("elearning_classroom_room", classroom_id=classroom.id)
+
+            form = VirtualClassroomForm(request.POST, request.FILES, subjects_qs=subjects)
+            if form.is_valid():
+                classroom = form.save(commit=False)
+                classroom.audience = "STUDENTS"
+                classroom.host_user = user
+                classroom.course = classroom.subject.course
+                classroom.teacher = _get_staff_profile(user) or classroom.subject.staff
+                classroom.status = "SCHEDULED"
+                classroom.save()
+
+                if classroom.recurrence != "NONE":
+                    step_days = 1 if classroom.recurrence == "DAILY" else (7 if classroom.recurrence == "WEEKLY" else 14)
+                    for idx in range(1, 4):
+                        VirtualClassroom.objects.create(
+                            audience="STUDENTS",
+                            title=f"{classroom.title} (Part {idx + 1})",
+                            host_user=user,
+                            subject=classroom.subject,
+                            course=classroom.course,
+                            session=classroom.session,
+                            topic=classroom.topic,
+                            teacher=classroom.teacher,
+                            academic_year=classroom.academic_year,
+                            stream=classroom.stream,
+                            description=classroom.description,
+                            learning_objectives=classroom.learning_objectives,
+                            scheduled_start=classroom.scheduled_start + timedelta(days=step_days * idx),
+                            duration_minutes=classroom.duration_minutes,
+                            recurrence=classroom.recurrence,
+                            status="SCHEDULED",
+                            waiting_room_enabled=classroom.waiting_room_enabled,
+                            mute_on_entry=classroom.mute_on_entry,
+                            allow_student_chat=classroom.allow_student_chat,
+                            allow_student_whiteboard=classroom.allow_student_whiteboard,
+                            attendance_threshold_percent=classroom.attendance_threshold_percent,
+                            late_grace_minutes=classroom.late_grace_minutes,
+                        )
+
+                notify_course_students(
+                    classroom.course,
+                    f"Scheduled Online Class: {classroom.title} ({classroom.subject.name}) on {classroom.scheduled_start:%b %d, %H:%M}.",
+                )
+                messages.success(request, f"Virtual classroom '{classroom.title}' scheduled & students notified.")
+                return redirect("elearning_classrooms")
+            else:
+                messages.error(request, f"Please correct the form: {form.errors.as_text()}")
 
     status_filter = request.GET.get("status", "").strip()
-    if is_admin_or_dos(user):
-        qs = VirtualClassroom.objects.all()
-    elif is_teacher(user):
+    staff_meetings_qs = VirtualClassroom.objects.none()
+
+    if is_admin_role:
+        staff_meetings_qs = VirtualClassroom.objects.filter(audience="STAFF").select_related("host_user", "session")
+        qs = VirtualClassroom.objects.filter(audience="STUDENTS")
+    elif is_teacher_role:
         staff = _get_staff_profile(user)
-        qs = VirtualClassroom.objects.filter(Q(teacher=staff) | Q(subject__in=subjects)).distinct()
+        staff_meetings_qs = (
+            VirtualClassroom.objects.filter(audience="STAFF")
+            .filter(Q(invited_staff__isnull=True) | Q(invited_staff=staff))
+            .distinct()
+            .select_related("host_user", "session")
+        )
+        qs = VirtualClassroom.objects.filter(audience="STUDENTS").filter(
+            Q(teacher=staff) | Q(subject__in=subjects)
+        ).distinct()
     elif is_student(user):
         student = Student.objects.filter(admin=user).first()
-        qs = VirtualClassroom.objects.filter(course=student.course) if student and student.course else VirtualClassroom.objects.none()
+        qs = VirtualClassroom.objects.filter(
+            audience="STUDENTS", course=student.course
+        ) if student and student.course else VirtualClassroom.objects.none()
     elif is_parent(user):
         guardian = ParentGuardian.objects.filter(admin=user).first()
         c_ids = guardian.students.values_list("course_id", flat=True) if guardian else []
-        qs = VirtualClassroom.objects.filter(course_id__in=c_ids)
+        qs = VirtualClassroom.objects.filter(audience="STUDENTS", course_id__in=c_ids)
     else:
         qs = VirtualClassroom.objects.none()
 
-    qs = qs.select_related("course", "subject", "teacher__admin", "session").annotate(
+    qs = qs.select_related("course", "subject", "teacher__admin", "host_user", "session").annotate(
         attendees_count=Count("attendance_records", filter=Q(attendance_records__joined_at__isnull=False))
     )
     if status_filter:
         qs = qs.filter(status=status_filter)
+        staff_meetings_qs = staff_meetings_qs.filter(status=status_filter)
 
     context = {
-        "page_title": "Virtual Classrooms",
+        "page_title": "Staff Virtual Meetings & Classrooms" if is_admin_role else "Virtual Classrooms",
         "classrooms": qs[:80],
+        "staff_meetings": staff_meetings_qs[:40],
         "subjects": subjects,
-        "can_create": can_create,
+        "all_staff_list": Staff.objects.select_related("admin", "course").all() if is_admin_role else [],
+        "can_create_student_class": can_create_student_class,
+        "can_create_staff_meeting": can_create_staff_meeting,
+        "is_admin_role": is_admin_role,
         "status_filter": status_filter,
-        "form": VirtualClassroomForm(subjects_qs=subjects) if can_create else None,
-        "live_count": qs.filter(status="LIVE").count(),
-        "scheduled_count": qs.filter(status="SCHEDULED").count(),
+        "form": VirtualClassroomForm(subjects_qs=subjects) if can_create_student_class else None,
+        "staff_meeting_form": StaffMeetingForm() if can_create_staff_meeting else None,
+        "live_count": qs.filter(status="LIVE").count() + staff_meetings_qs.filter(status="LIVE").count(),
+        "scheduled_count": qs.filter(status="SCHEDULED").count() + staff_meetings_qs.filter(status="SCHEDULED").count(),
     }
     return render(request, "elearning_template/virtual_classrooms.html", context)
 
 
 def virtual_classroom_room(request, classroom_id):
     classroom = get_object_or_404(
-        VirtualClassroom.objects.select_related("course", "subject", "teacher__admin", "topic", "session"),
+        VirtualClassroom.objects.select_related("course", "subject", "teacher__admin", "host_user", "topic", "session"),
         id=classroom_id,
     )
     user = request.user
     if not can_access_classroom(user, classroom):
-        messages.error(request, "You do not have permission to enter this virtual classroom.")
+        if classroom.audience == "STUDENTS" and is_admin_or_dos(user):
+            messages.warning(
+                request,
+                "Administrators cannot join live virtual classes with students. Only teachers conduct student classes; you can review Attendance Reports instead.",
+            )
+        elif classroom.audience == "STAFF":
+            messages.error(request, "This virtual meeting is restricted to invited school staff.")
+        else:
+            messages.error(request, "You do not have permission to enter this virtual classroom.")
         return redirect("elearning_classrooms")
 
-    is_host = is_admin_or_dos(user) or (
-        is_teacher(user) and (_get_staff_profile(user) == classroom.teacher or can_manage_subject(user, classroom.subject))
-    )
+    is_host = is_classroom_host(user, classroom)
 
-    if is_student(user):
+    if is_student(user) and classroom.audience == "STUDENTS":
         if classroom.status == "CANCELLED":
             messages.warning(request, "This virtual class has been cancelled.")
             return redirect("elearning_classrooms")
@@ -702,21 +807,48 @@ def virtual_classroom_room(request, classroom_id):
             if not allowed:
                 messages.error(request, "You were removed from this virtual classroom by the host.")
                 return redirect("elearning_classrooms")
+    elif not is_host and classroom.audience == "STAFF":
+        if classroom.status == "CANCELLED":
+            messages.warning(request, "This staff meeting has been cancelled.")
+            return redirect("elearning_classrooms")
+        if classroom.is_locked:
+            messages.warning(request, "This staff meeting is currently locked by the host.")
+            return redirect("elearning_classrooms")
     elif is_host and classroom.status == "SCHEDULED":
-        # Auto-activate room when teacher launches it
         classroom.status = "LIVE"
         classroom.started_at = classroom.started_at or timezone.now()
         classroom.save(update_fields=["status", "started_at"])
-        notify_course_students(
-            classroom.course,
-            f"LIVE NOW: {classroom.title} ({classroom.subject.name}) has started.",
-        )
+        if classroom.audience == "STAFF":
+            invited_qs = classroom.invited_staff.all() if classroom.invited_staff.exists() else None
+            notify_staff_members(
+                f"LIVE STAFF MEETING: {classroom.title} has started (Host: {classroom.host_display_name}).",
+                staff_qs=invited_qs,
+            )
+        elif classroom.course_id and classroom.subject_id:
+            notify_course_students(
+                classroom.course,
+                f"LIVE NOW: {classroom.title} ({classroom.subject.name}) has started.",
+            )
 
-    attendees = VirtualAttendanceRecord.objects.filter(classroom=classroom).select_related("student__admin")
+    attendees = (
+        VirtualAttendanceRecord.objects.filter(classroom=classroom).select_related("student__admin")
+        if classroom.audience == "STUDENTS"
+        else []
+    )
     chat_messages = VirtualClassroomMessage.objects.filter(classroom=classroom).select_related("sender")[:80]
-    lesson_materials = LearningMaterial.objects.filter(
-        subject=classroom.subject, is_published=True
-    )[:10]
+    lesson_materials = (
+        LearningMaterial.objects.filter(subject=classroom.subject, is_published=True)[:10]
+        if classroom.subject_id
+        else []
+    )
+    if classroom.audience == "STAFF":
+        enrolled_count = (
+            classroom.invited_staff.count()
+            if classroom.invited_staff.exists()
+            else Staff.objects.count()
+        )
+    else:
+        enrolled_count = Student.objects.filter(course=classroom.course).count() if classroom.course_id else 0
 
     context = {
         "page_title": classroom.title,
@@ -727,7 +859,7 @@ def virtual_classroom_room(request, classroom_id):
         "attendees": attendees,
         "chat_messages": chat_messages,
         "lesson_materials": lesson_materials,
-        "enrolled_count": Student.objects.filter(course=classroom.course).count(),
+        "enrolled_count": enrolled_count,
     }
     return render(request, "elearning_template/virtual_classroom_room.html", context)
 
@@ -827,13 +959,11 @@ def classroom_whiteboard_api(request, classroom_id):
     if not can_access_classroom(request.user, classroom):
         return JsonResponse({"error": "Unauthorized"}, status=403)
 
-    is_host = is_admin_or_dos(request.user) or (
-        is_teacher(request.user) and (_get_staff_profile(request.user) == classroom.teacher or can_manage_subject(request.user, classroom.subject))
-    )
+    is_host = is_classroom_host(request.user, classroom)
 
     if request.method == "POST":
         if not is_host and not classroom.allow_student_whiteboard:
-            return JsonResponse({"error": "Whiteboard annotation is restricted to the teacher."}, status=403)
+            return JsonResponse({"error": "Whiteboard annotation is restricted to the host."}, status=403)
         data = request.POST.get("whiteboard_data", "")
         # Basic safety cap (~2MB base64 PNG)
         if len(data) <= 2_500_000:
@@ -863,26 +993,33 @@ def classroom_control_api(request, classroom_id):
             rec.save(update_fields=["hand_raised"])
             return JsonResponse({"ok": True, "hand_raised": rec.hand_raised})
 
-    is_host = is_admin_or_dos(user) or (
-        is_teacher(user) and (_get_staff_profile(user) == classroom.teacher or can_manage_subject(user, classroom.subject))
-    )
+    is_host = is_classroom_host(user, classroom)
     if not is_host:
-        return JsonResponse({"error": "Teacher host permission required."}, status=403)
+        return JsonResponse({"error": "Meeting host permission required."}, status=403)
 
     if action == "start":
         classroom.status = "LIVE"
         classroom.started_at = classroom.started_at or timezone.now()
         classroom.save(update_fields=["status", "started_at"])
-        notify_course_students(classroom.course, f"LIVE NOW: {classroom.title} ({classroom.subject.name})")
+        if classroom.audience == "STAFF":
+            invited_qs = classroom.invited_staff.all() if classroom.invited_staff.exists() else None
+            notify_staff_members(f"LIVE STAFF MEETING: {classroom.title}", staff_qs=invited_qs)
+        elif classroom.course_id and classroom.subject_id:
+            notify_course_students(classroom.course, f"LIVE NOW: {classroom.title} ({classroom.subject.name})")
     elif action == "end":
         classroom.status = "ENDED"
         classroom.ended_at = timezone.now()
         classroom.save(update_fields=["status", "ended_at"])
-        sync_classroom_attendance_to_sgs(classroom, actor=user)
+        if classroom.audience == "STUDENTS":
+            sync_classroom_attendance_to_sgs(classroom, actor=user)
     elif action == "cancel":
         classroom.status = "CANCELLED"
         classroom.save(update_fields=["status"])
-        notify_course_students(classroom.course, f"CANCELLED: Virtual lesson '{classroom.title}' was cancelled.")
+        if classroom.audience == "STAFF":
+            invited_qs = classroom.invited_staff.all() if classroom.invited_staff.exists() else None
+            notify_staff_members(f"CANCELLED: Staff meeting '{classroom.title}' was cancelled.", staff_qs=invited_qs)
+        elif classroom.course_id:
+            notify_course_students(classroom.course, f"CANCELLED: Virtual lesson '{classroom.title}' was cancelled.")
     elif action == "toggle_lock":
         classroom.is_locked = not classroom.is_locked
         classroom.save(update_fields=["is_locked"])
@@ -948,6 +1085,9 @@ def classroom_attendance_report(request, classroom_id):
         VirtualClassroom.objects.select_related("course", "subject", "teacher__admin", "session"),
         id=classroom_id,
     )
+    if classroom.audience == "STAFF" or not classroom.course_id:
+        messages.info(request, "Student attendance reports apply only to teacher-led student virtual classes.")
+        return redirect("elearning_classrooms")
     if not (is_admin_or_dos(request.user) or is_teacher(request.user)):
         messages.error(request, "Only teachers and administrators can manage virtual attendance reports.")
         return redirect("elearning_classrooms")

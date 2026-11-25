@@ -20,6 +20,7 @@ from .models import (
     LectureRecording,
     OnlineAssessment,
     Session,
+    Staff,
     Student,
     Subject,
     SubjectAnnouncement,
@@ -185,6 +186,70 @@ class VirtualClassroomForm(FormSettings):
             self.fields["subject"].queryset = subjects_qs
             self.fields["topic"].queryset = LearningTopic.objects.filter(subject__in=subjects_qs)
         self.fields["topic"].required = False
+        self.fields["session"].required = False
+        for fname in (
+            "waiting_room_enabled",
+            "mute_on_entry",
+            "allow_student_chat",
+            "allow_student_whiteboard",
+        ):
+            self.fields[fname].widget.attrs["class"] = "form-check-input"
+
+    def clean_supporting_material(self):
+        return _validate_uploaded_file(
+            self.cleaned_data.get("supporting_material"),
+            ALLOWED_MATERIAL_EXTENSIONS,
+            MAX_MATERIAL_SIZE_BYTES,
+        )
+
+
+class StaffMeetingForm(FormSettings):
+    scheduled_start = forms.DateTimeField(
+        label="Meeting Date & Time",
+        widget=forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
+    )
+    invited_staff = forms.ModelMultipleChoiceField(
+        queryset=Staff.objects.select_related("admin").all(),
+        required=False,
+        label="Invite Specific Staff (leave empty for All Staff)",
+        widget=forms.SelectMultiple(attrs={"class": "form-control", "style": "height:90px;"}),
+    )
+
+    class Meta:
+        model = VirtualClassroom
+        fields = [
+            "title",
+            "session",
+            "academic_year",
+            "scheduled_start",
+            "duration_minutes",
+            "recurrence",
+            "description",
+            "supporting_material",
+            "invited_staff",
+            "waiting_room_enabled",
+            "mute_on_entry",
+            "allow_student_chat",
+            "allow_student_whiteboard",
+        ]
+        labels = {
+            "session": "Academic Term",
+            "description": "Meeting Agenda",
+            "supporting_material": "Agenda / Briefing Document",
+            "allow_student_chat": "Allow Participant Chat",
+            "allow_student_whiteboard": "Allow Staff Whiteboard Collaboration",
+        }
+        widgets = {
+            "title": forms.TextInput(attrs={"placeholder": "e.g. Weekly Faculty Briefing / Staff Meeting"}),
+            "description": forms.Textarea(attrs={"rows": 2, "placeholder": "Agenda items and key discussion points..."}),
+            "waiting_room_enabled": forms.CheckboxInput(),
+            "mute_on_entry": forms.CheckboxInput(),
+            "allow_student_chat": forms.CheckboxInput(),
+            "allow_student_whiteboard": forms.CheckboxInput(),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.fields["session"].required = False
         for fname in (
             "waiting_room_enabled",

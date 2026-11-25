@@ -1007,6 +1007,10 @@ class DiscussionReply(models.Model):
 
 
 class VirtualClassroom(models.Model):
+    AUDIENCE_CHOICES = (
+        ("STUDENTS", "Student Virtual Class"),
+        ("STAFF", "Staff / Faculty Meeting"),
+    )
     STATUS_CHOICES = (
         ("SCHEDULED", "Scheduled"),
         ("LIVE", "Live Now"),
@@ -1020,12 +1024,21 @@ class VirtualClassroom(models.Model):
         ("BIWEEKLY", "Every Two Weeks"),
     )
 
+    audience = models.CharField(
+        max_length=12, choices=AUDIENCE_CHOICES, default="STUDENTS"
+    )
     title = models.CharField(max_length=220)
+    host_user = models.ForeignKey(
+        CustomUser, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="hosted_virtual_meetings"
+    )
     subject = models.ForeignKey(
-        Subject, on_delete=models.CASCADE, related_name="virtual_classrooms"
+        Subject, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="virtual_classrooms"
     )
     course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, related_name="virtual_classrooms"
+        Course, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="virtual_classrooms"
     )
     session = models.ForeignKey(
         Session, null=True, blank=True, on_delete=models.SET_NULL,
@@ -1036,7 +1049,8 @@ class VirtualClassroom(models.Model):
         related_name="virtual_classrooms"
     )
     teacher = models.ForeignKey(
-        Staff, on_delete=models.CASCADE, related_name="virtual_classrooms"
+        Staff, null=True, blank=True, on_delete=models.CASCADE,
+        related_name="virtual_classrooms"
     )
     academic_year = models.CharField(max_length=20, default="2026")
     stream = models.CharField(max_length=40, blank=True, default="")
@@ -1078,6 +1092,9 @@ class VirtualClassroom(models.Model):
     invited_students = models.ManyToManyField(
         Student, blank=True, related_name="invited_virtual_classrooms"
     )
+    invited_staff = models.ManyToManyField(
+        Staff, blank=True, related_name="invited_staff_meetings"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1086,10 +1103,27 @@ class VirtualClassroom(models.Model):
         indexes = [
             models.Index(fields=["course", "status", "-scheduled_start"]),
             models.Index(fields=["teacher", "status"]),
+            models.Index(fields=["audience", "status", "-scheduled_start"]),
         ]
 
+    @property
+    def is_staff_meeting(self):
+        return self.audience == "STAFF"
+
+    @property
+    def host_display_name(self):
+        if self.host_user_id:
+            return self.host_user.get_full_name() or self.host_user.email
+        if self.teacher_id:
+            return self.teacher.admin.get_full_name() or self.teacher.admin.email
+        return "School Administration"
+
     def __str__(self):
-        return f"{self.title} ({self.course.name} · {self.subject.name})"
+        if self.audience == "STAFF":
+            return f"{self.title} (Staff Meeting)"
+        course_name = self.course.name if self.course_id else "Class"
+        subj_name = self.subject.name if self.subject_id else "Subject"
+        return f"{self.title} ({course_name} · {subj_name})"
 
 
 class VirtualClassroomMessage(models.Model):

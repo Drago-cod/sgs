@@ -32,6 +32,7 @@ from .models import (
     LearningTopic,
     LectureRecording,
     MaterialAccessLog,
+    NotificationStaff,
     NotificationStudent,
     OnlineAssessment,
     ParentGuardian,
@@ -119,33 +120,73 @@ def can_manage_subject(user, subject):
     return False
 
 
-def can_access_classroom(user, classroom):
-    """Strict access check for VirtualClassroom membership & authorization."""
+def is_classroom_host(user, classroom):
+    """
+    Host authorization:
+    - Staff meetings ('STAFF'): Principal/Admin ('1'), DOS ('4'), or the host_user.
+    - Student classes ('STUDENTS'): Only Teachers ('2'/'6') assigned to that class/subject.
+      Admins/DOS cannot host or conduct live student classes.
+    """
     role = get_user_role(user)
-    if role in ("1", "4"):
-        return True
+    if classroom.audience == "STAFF":
+        return role in ("1", "4") or classroom.host_user_id == user.id
+    if role in ("2", "6"):
+        staff = Staff.objects.filter(admin=user).first()
+        if not staff:
+            return False
+        if classroom.teacher_id == staff.id:
+            return True
+        if classroom.subject_id and classroom.subject.staff_id == staff.id:
+            return True
+    return False
+
+
+def can_access_classroom(user, classroom):
+    """
+    Strict access check for VirtualClassroom membership & authorization:
+    - STAFF meetings: Principal/Admin ('1'), DOS ('4'), and invited Staff/Teachers ('2'/'6').
+      Students & Parents are strictly blocked.
+    - STUDENTS virtual classes: Assigned Teachers ('2'/'6') and enrolled Students ('3').
+      Principal/Admin ('1'), DOS ('4'), and Parents ('7') cannot join/contact live student classes.
+    """
+    role = get_user_role(user)
+    if classroom.audience == "STAFF":
+        if role in ("1", "4"):
+            return True
+        if role in ("2", "6"):
+            staff = Staff.objects.filter(admin=user).first()
+            if not staff:
+                return False
+            if classroom.invited_staff.exists():
+                return classroom.invited_staff.filter(id=staff.id).exists()
+            return True
+        return False
+
+    # Student Virtual Class ('STUDENTS')
     if role in ("2", "6"):
         staff = Staff.objects.filter(admin=user).first()
         if not staff:
             return False
         return (
             classroom.teacher_id == staff.id
-            or classroom.subject.staff_id == staff.id
-            or (staff.class_teacher and staff.course_id == classroom.course_id)
+            or (classroom.subject_id and classroom.subject.staff_id == staff.id)
+            or (staff.class_teacher and classroom.course_id and staff.course_id == classroom.course_id)
         )
     if role == "3":
         student = Student.objects.filter(admin=user).first()
-        if not student or student.course_id != classroom.course_id:
+        if not student or not classroom.course_id or student.course_id != classroom.course_id:
             return False
         if classroom.invited_students.exists():
             return classroom.invited_students.filter(id=student.id).exists()
         return True
-    # Parents must NOT join restricted live classrooms (Section 16)
+    # Admin/DOS cannot conduct/join live student virtual classes; Parents cannot join either
     return False
 
 
 def notify_course_students(course, message, students_qs=None):
     """Send integrated SGS NotificationStudent alerts to all students in a course."""
+    if not course and students_qs is None:
+        return 0
     targets = students_qs if students_qs is not None else Student.objects.filter(course=course)
     notifications = [
         NotificationStudent(student=st, message=message)
@@ -153,6 +194,18 @@ def notify_course_students(course, message, students_qs=None):
     ]
     if notifications:
         NotificationStudent.objects.bulk_create(notifications)
+    return len(notifications)
+
+
+def notify_staff_members(message, staff_qs=None):
+    """Send integrated SGS NotificationStaff alerts to invited or all staff/teachers."""
+    targets = staff_qs if staff_qs is not None else Staff.objects.all()
+    notifications = [
+        NotificationStaff(staff=st, message=message)
+        for st in targets
+    ]
+    if notifications:
+        NotificationStaff.objects.bulk_create(notifications)
     return len(notifications)
 
 
@@ -291,8 +344,10 @@ def record_student_leave(classroom, student):
 def sync_classroom_attendance_to_sgs(classroom, actor=None):
     """
     Synchronize virtual classroom attendance into existing SGS Attendance & AttendanceReport
-    tables without creating duplicates.
+    tables without creating duplicates. Only applies to student virtual classes.
     """
+    if classroom.audience == "STAFF" or not classroom.subject_id or not classroom.course_id:
+        return None, 0
     session = classroom.session or Session.objects.order_by("-id").first()
     if not session:
         return None, 0

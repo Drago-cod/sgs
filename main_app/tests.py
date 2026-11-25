@@ -1236,3 +1236,73 @@ class ELearningVirtualClassroomEndToEndTests(TestCase):
         self.assertIn("text/csv", csv_resp["Content-Type"])
         self.assertContains(csv_resp, "Mathematics")
 
+    def test_admin_hosts_staff_meetings_and_cannot_conduct_student_virtual_classes(self):
+        from .models import NotificationStaff, VirtualClassroom
+
+        # 1. Admin creates an instant virtual meeting with Staff -> LIVE & notifies Staff
+        self.client.force_login(self.admin_user)
+        resp = self.client.post(reverse("elearning_classrooms"), {
+            "action": "instant_staff",
+            "title": "Term Opening Staff Briefing",
+            "duration_minutes": "40",
+        })
+        self.assertEqual(resp.status_code, 302)
+        staff_meeting = VirtualClassroom.objects.get(title="Term Opening Staff Briefing")
+        self.assertEqual(staff_meeting.audience, "STAFF")
+        self.assertEqual(staff_meeting.status, "LIVE")
+        self.assertTrue(
+            NotificationStaff.objects.filter(
+                staff=self.teacher, message__icontains="Term Opening Staff Briefing"
+            ).exists()
+        )
+        # Admin CAN enter their Staff Meeting room
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_room", args=[staff_meeting.id])).status_code,
+            200,
+        )
+
+        # 2. Admin CANNOT create a student virtual class
+        blocked_create = self.client.post(reverse("elearning_classrooms"), {
+            "action": "instant",
+            "subject_id": self.subject.id,
+            "title": "Admin Unauthorized Student Class",
+        })
+        self.assertEqual(blocked_create.status_code, 302)
+        self.assertFalse(VirtualClassroom.objects.filter(title="Admin Unauthorized Student Class").exists())
+
+        # 3. Teacher creates a student virtual class & CAN join Admin's Staff Meeting
+        self.client.force_login(self.teacher_user)
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_room", args=[staff_meeting.id])).status_code,
+            200,
+        )
+        self.client.post(reverse("elearning_classrooms"), {
+            "action": "instant",
+            "subject_id": self.subject.id,
+            "title": "Teacher Live Algebra Class",
+        })
+        student_class = VirtualClassroom.objects.get(title="Teacher Live Algebra Class")
+        self.assertEqual(student_class.audience, "STUDENTS")
+
+        # 4. Admin CANNOT join/contact live Student Virtual Class (redirected), but CAN view Attendance Report
+        self.client.force_login(self.admin_user)
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_room", args=[student_class.id])).status_code,
+            302,
+        )
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_attendance", args=[student_class.id])).status_code,
+            200,
+        )
+
+        # 5. Student CANNOT join Admin's Staff Meeting, but CAN join Teacher's Student Virtual Class
+        self.client.force_login(self.student_user)
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_room", args=[staff_meeting.id])).status_code,
+            302,
+        )
+        self.assertEqual(
+            self.client.get(reverse("elearning_classroom_room", args=[student_class.id])).status_code,
+            200,
+        )
+

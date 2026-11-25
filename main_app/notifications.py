@@ -333,6 +333,26 @@ def get_user_notifications(user, limit=30):
                     "link": reverse("staff_performance_feedback"),
                 })
 
+            # Live Staff Virtual Meetings hosted by Principal / DOS
+            for sm in VirtualClassroom.objects.filter(
+                audience="STAFF", status="LIVE"
+            ).order_by("-started_at")[:4]:
+                if not sm.invited_staff.exists() or sm.invited_staff.filter(id=staff.id).exists():
+                    items.append({
+                        "id": sm.id,
+                        "kind": "info_link",
+                        "category": "Live Staff Meeting",
+                        "severity": "CRITICAL",
+                        "icon": "fa-video",
+                        "title": f"LIVE STAFF MEETING: {sm.title}",
+                        "message": f"Hosted by {sm.host_display_name}. Click to join the live staff virtual meeting.",
+                        "created_at": sm.started_at or sm.scheduled_start,
+                        "is_unread": True,
+                        "needs_action": True,
+                        "action_label": "Join Staff Meeting",
+                        "link": reverse("elearning_classroom_room", args=[sm.id]),
+                    })
+
             # Admin announcements sent to this staff member
             for notif in NotificationStaff.objects.filter(staff=staff).order_by("-created_at")[:8]:
                 items.append({
